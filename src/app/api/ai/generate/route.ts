@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 120;
+export const dynamic = "force-dynamic";
+
 const GEN_API_BASE = "https://gen.aditor.ai/api";
+
+// Upload base64 data URI to gen.aditor.ai, get back a fetchable URL
+async function uploadToTemp(dataUri: string): Promise<string> {
+  const res = await fetch(`${GEN_API_BASE}/upload-temp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ data: dataUri }),
+  });
+  if (!res.ok) {
+    throw new Error(`Upload failed: ${await res.text()}`);
+  }
+  const { url } = await res.json();
+  return url;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,16 +28,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "prompt is required" }, { status: 400 });
     }
 
-    // Build references array — gen.aditor.ai accepts:
-    // - data:image/... base64 strings
-    // - http/https URLs
-    // - /outputs/... local paths
+    // If reference image is a data URI, upload it first
     const references: string[] = [];
     if (referenceImageUrl) {
-      references.push(referenceImageUrl);
+      let refUrl = referenceImageUrl;
+      if (refUrl.startsWith("data:image")) {
+        try {
+          refUrl = await uploadToTemp(refUrl);
+        } catch (err: any) {
+          console.error("[generate] upload-temp failed:", err.message);
+          // Continue without reference — better than failing entirely
+        }
+      }
+      references.push(refUrl);
     }
 
-    // When editing an existing image, prepend "edit this image: " context
+    // When editing, make the prompt clearer for the model
     const editPrompt = referenceImageUrl
       ? `Edit this image: ${prompt}`
       : prompt;
@@ -40,18 +63,18 @@ export async function POST(req: NextRequest) {
       const errorText = await upstream.text();
       console.error("[generate proxy] upstream error:", upstream.status, errorText);
       return NextResponse.json(
-        { error: `Upstream error: ${errorText}` },
+        { error: `Generation failed: ${errorText}` },
         { status: upstream.status }
       );
     }
 
     const data = await upstream.json();
     const imageUrl = data.url || data.imageUrl || (data.images && data.images[0]?.url);
-    
+
     if (!imageUrl) {
       console.error("[generate proxy] no URL in response:", JSON.stringify(data).slice(0, 200));
       return NextResponse.json(
-        { error: "No result URL from generation" },
+        { error: "No result from generation" },
         { status: 500 }
       );
     }
@@ -61,10 +84,10 @@ export async function POST(req: NextRequest) {
       width: data.width || 512,
       height: data.height || 512,
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error("generate error:", err);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: err.message || "Internal server error" },
       { status: 500 }
     );
   }

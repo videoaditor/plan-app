@@ -574,28 +574,41 @@ body {
   animation: grainShift 0.8s steps(4) infinite !important;
 }
 
-/* ─── Processing Indicator (on-shape spinner) ────────────────────────── */
+/* ─── Processing Indicator (on-shape overlay) ────────────────────────── */
+@keyframes sparkleRotate {
+  0% { transform: rotate(0deg) scale(1); opacity: 0.9; }
+  25% { transform: rotate(90deg) scale(1.1); opacity: 1; }
+  50% { transform: rotate(180deg) scale(1); opacity: 0.9; }
+  75% { transform: rotate(270deg) scale(1.1); opacity: 1; }
+  100% { transform: rotate(360deg) scale(1); opacity: 0.9; }
+}
+
+@keyframes processingPulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.5; }
+}
+
 .processing-overlay {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   z-index: 10;
   pointer-events: none;
   border-radius: inherit;
+  animation: processingPulse 2s ease-in-out infinite;
 }
 
 .processing-overlay::after {
-  content: "";
-  width: 28px;
-  height: 28px;
-  border: 2.5px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+  content: "✦";
+  font-size: 32px;
+  color: #fff;
+  filter: drop-shadow(0 0 8px rgba(255,255,255,0.5)) drop-shadow(0 0 20px rgba(37,99,235,0.4));
+  animation: sparkleRotate 2s ease-in-out infinite;
 }
 
 /* ─── Animation Picker UI ────────────────────────────────────────────── */

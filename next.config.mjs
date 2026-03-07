@@ -2,6 +2,11 @@
 
 const nextConfig = {
   transpilePackages: ["@tldraw/tldraw", "@tldraw/assets", "@tldraw/editor", "@tldraw/store", "@tldraw/tlschema"],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "20mb",
+    },
+  },
   images: {
     remotePatterns: [
       {

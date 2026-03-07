@@ -11,6 +11,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "imageUrl is required" }, { status: 400 });
     }
 
+    // Forward to upstream — it accepts both URLs and data: URIs
+    // fal.ai birefnet handles data:image/... base64 natively
     const upstream = await fetch(`${GEN_API_BASE}/remove-bg`, {
       method: "POST",
       headers: {
@@ -24,6 +26,7 @@ export async function POST(req: NextRequest) {
 
     if (!upstream.ok) {
       const errorText = await upstream.text();
+      console.error("[remove-bg proxy] upstream error:", upstream.status, errorText);
       return NextResponse.json(
         { error: `Upstream error: ${errorText}` },
         { status: upstream.status }
@@ -31,8 +34,17 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await upstream.json();
-    // Normalize response: gen.aditor.ai returns { success, url }
-    return NextResponse.json({ imageUrl: data.url || data.imageUrl || data.image_url });
+    const resultUrl = data.url || data.imageUrl || data.image_url;
+    
+    if (!resultUrl) {
+      console.error("[remove-bg proxy] no URL in response:", data);
+      return NextResponse.json(
+        { error: "No result URL from background removal" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ imageUrl: resultUrl });
   } catch (err) {
     console.error("remove-bg error:", err);
     return NextResponse.json(

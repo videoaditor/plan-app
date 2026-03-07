@@ -53,14 +53,10 @@ export default function AnimationPicker({
 
   const setAnimation = useCallback(
     (animType: AnimationType) => {
-      // For cinematic effects, they can stack with motion effects
-      // For motion effects, they replace each other
       const currentMeta = (editor.getShape(shapeId as any)?.meta as any) || {};
       const clickedEffect = effects.find((e) => e.id === animType);
-      const currentEffect = effects.find((e) => e.id === currentAnimation);
 
       if (clickedEffect?.group === "cinematic") {
-        // Toggle cinematic effects independently via separate meta keys
         const key = `fx_${animType}`;
         const isOn = currentMeta[key];
         editor.updateShapes([
@@ -71,7 +67,6 @@ export default function AnimationPicker({
           },
         ]);
       } else {
-        // Motion effects replace each other
         const newAnim = currentMeta.animation === animType ? "none" : animType;
         editor.updateShapes([
           {
@@ -101,7 +96,6 @@ export default function AnimationPicker({
     setExpanded(false);
   }, [editor, shapeId]);
 
-  // Close on click outside
   useEffect(() => {
     if (!expanded) return;
     const handleClick = (e: MouseEvent) => {
@@ -148,7 +142,6 @@ export default function AnimationPicker({
     >
       {expanded ? (
         <div className="animation-picker-expanded">
-          {/* Motion effects */}
           {motionEffects.map((eff) => (
             <button
               key={eff.id}
@@ -161,11 +154,7 @@ export default function AnimationPicker({
               <span className="animation-option-icon">{eff.icon}</span>
             </button>
           ))}
-
-          {/* Separator */}
           <div className="animation-picker-sep" />
-
-          {/* Cinematic effects */}
           {cinematicEffects.map((eff) => (
             <button
               key={eff.id}
@@ -178,8 +167,6 @@ export default function AnimationPicker({
               <span className="animation-option-icon">{eff.icon}</span>
             </button>
           ))}
-
-          {/* Clear all */}
           {hasAny && (
             <>
               <div className="animation-picker-sep" />
@@ -217,8 +204,54 @@ export default function AnimationPicker({
   );
 }
 
-// ─── Apply all effects to DOM elements ───────────────────────────────
-const ALL_ANIM_CLASSES = [
+// ─── Stamp shape IDs onto DOM elements ───────────────────────────────
+// tldraw doesn't render data-shape-id, so we stamp it ourselves
+// by matching shapes to their DOM containers via CSS transform strings
+function stampShapeIds(editor: Editor) {
+  const shapes = editor.getCurrentPageShapes();
+  const imageShapes = shapes.filter((s) => s.type === "image");
+  if (imageShapes.length === 0) return;
+
+  // Get all image shape DOM elements
+  const domEls = document.querySelectorAll<HTMLElement>(
+    '.tl-shape[data-shape-type="image"]'
+  );
+  if (domEls.length === 0) return;
+
+  // Build a map of transform string → shape id
+  // Import Mat at module level would fail (SSR), so we use getComputedStyle
+  for (const shape of imageShapes) {
+    const pageTransform = editor.getShapePageTransform(shape.id);
+    if (!pageTransform) continue;
+
+    // tldraw uses Mat.toCssString which produces matrix(a, b, c, d, e, f)
+    const { a, b, c, d, e, f } = pageTransform;
+    // Round to avoid floating point mismatch
+    const matStr = `matrix(${a}, ${b}, ${c}, ${d}, ${e}, ${f})`;
+
+    for (let i = 0; i < domEls.length; i++) {
+      const el = domEls[i];
+      const elTransform = el.style.transform;
+      if (!elTransform) continue;
+
+      // Compare the transforms — tldraw sets them inline
+      if (normalizeTransform(elTransform) === normalizeTransform(matStr)) {
+        el.setAttribute("data-shape-id", shape.id);
+        break;
+      }
+    }
+  }
+}
+
+function normalizeTransform(t: string): string {
+  // Extract numbers from matrix(...) and round to 2 decimals
+  const nums = t.match(/-?[\d.]+/g);
+  if (!nums) return t;
+  return nums.map((n) => Math.round(parseFloat(n) * 100) / 100).join(",");
+}
+
+// ─── All animation/effect classes ────────────────────────────────────
+const ALL_CLASSES = [
   "anim-wiggle",
   "anim-float",
   "anim-pulse",
@@ -229,11 +262,15 @@ const ALL_ANIM_CLASSES = [
   "fx-filmgrain",
 ];
 
+// ─── Apply all effects to DOM elements ───────────────────────────────
 export function useShapeAnimations(editor: Editor | null) {
   useEffect(() => {
     if (!editor) return;
 
     const applyAnimations = () => {
+      // First, stamp shape IDs onto DOM elements
+      stampShapeIds(editor);
+
       const allShapes = editor.getCurrentPageShapes();
       for (const shape of allShapes) {
         if (shape.type !== "image") continue;
@@ -246,11 +283,24 @@ export function useShapeAnimations(editor: Editor | null) {
         if (!el) continue;
 
         // Remove all effect classes
-        el.classList.remove(...ALL_ANIM_CLASSES);
+        el.classList.remove(...ALL_CLASSES);
 
-        // Remove any existing overlay pseudo-element containers
-        const existingOverlay = el.querySelector(".fx-overlay");
-        if (existingOverlay) existingOverlay.remove();
+        // Remove any existing overlay elements
+        el.querySelectorAll(".vignette-overlay, .grain-overlay, .processing-overlay").forEach((o) =>
+          o.remove()
+        );
+
+        // Processing indicator — show spinner on shape while AI runs
+        const processingType = meta.processing;
+        if (processingType) {
+          el.style.position = "relative";
+          el.style.overflow = "hidden";
+          if (!el.querySelector(".processing-overlay")) {
+            const p = document.createElement("div");
+            p.className = "processing-overlay";
+            el.appendChild(p);
+          }
+        }
 
         // Apply motion animation
         const animType = meta.animation as string | undefined;
@@ -258,68 +308,47 @@ export function useShapeAnimations(editor: Editor | null) {
           el.classList.add(`anim-${animType}`);
         }
 
-        // Apply cinematic effects (these can stack)
+        // Apply cinematic effects (stackable)
         if (meta.fx_kenburns) el.classList.add("fx-kenburns");
-        if (meta.fx_vignette) el.classList.add("fx-vignette");
-        if (meta.fx_filmgrain) el.classList.add("fx-filmgrain");
 
-        // For vignette and grain, we need overlay divs (CSS ::after can't target tldraw shapes reliably)
-        const needsVignette = meta.fx_vignette;
-        const needsGrain = meta.fx_filmgrain;
-
-        if (needsVignette || needsGrain) {
-          // Find the image element inside the shape
-          const imgContainer =
-            el.querySelector(".tl-image-container") ||
-            el.querySelector("img")?.parentElement ||
-            el;
-
-          // Ensure relative positioning for overlays
-          if (imgContainer instanceof HTMLElement) {
-            imgContainer.style.position = "relative";
-            imgContainer.style.overflow = "hidden";
+        if (meta.fx_vignette) {
+          el.classList.add("fx-vignette");
+          if (!el.querySelector(".vignette-overlay")) {
+            const v = document.createElement("div");
+            v.className = "vignette-overlay";
+            el.appendChild(v);
           }
+        }
 
-          if (needsVignette) {
-            let vignetteEl = el.querySelector(".vignette-overlay") as HTMLElement;
-            if (!vignetteEl) {
-              vignetteEl = document.createElement("div");
-              vignetteEl.className = "vignette-overlay";
-              (imgContainer || el).appendChild(vignetteEl);
-            }
-          }
-
-          if (needsGrain) {
-            let grainEl = el.querySelector(".grain-overlay") as HTMLElement;
-            if (!grainEl) {
-              grainEl = document.createElement("div");
-              grainEl.className = "grain-overlay";
-              (imgContainer || el).appendChild(grainEl);
-            }
+        if (meta.fx_filmgrain) {
+          el.classList.add("fx-filmgrain");
+          if (!el.querySelector(".grain-overlay")) {
+            const g = document.createElement("div");
+            g.className = "grain-overlay";
+            el.appendChild(g);
           }
         }
       }
     };
 
+    // Run on a short interval to catch tldraw re-renders
+    // (tldraw doesn't expose hooks for shape DOM lifecycle)
     applyAnimations();
-    const unsub = editor.store.listen(applyAnimations, { scope: "document" });
-    const viewportUnsub = editor.store.listen(applyAnimations, {
-      scope: "session",
-    });
-
-    const observer = new MutationObserver(() => {
+    const unsub = editor.store.listen(() => {
       requestAnimationFrame(applyAnimations);
-    });
+    }, { scope: "document" });
 
-    const container = document.querySelector(".tl-shapes");
-    if (container) {
-      observer.observe(container, { childList: true, subtree: true });
-    }
+    const sessionUnsub = editor.store.listen(() => {
+      requestAnimationFrame(applyAnimations);
+    }, { scope: "session" });
+
+    // Also poll every 500ms as a fallback for viewport changes
+    const interval = setInterval(applyAnimations, 500);
 
     return () => {
       unsub();
-      viewportUnsub();
-      observer.disconnect();
+      sessionUnsub();
+      clearInterval(interval);
     };
   }, [editor]);
 }

@@ -77,12 +77,11 @@ export default function ProcessingOverlay({ editor }: ProcessingOverlayProps) {
             animation: "entranceScale 0.3s ease-out forwards",
           }}
         >
-          {/* Concentric Lens Ring */}
-          <div className="processing-lens-ring">
-            <div className="ring inner" />
-            <div className="ring middle" />
-            <div className="ring outer" />
-            <div className="center-dot" />
+          {/* Rabbit & Hat Animation */}
+          <div className="rabbit-hat-stage">
+            <div className="hat hat-left">🎩</div>
+            <div className="rabbit-runner">🐇</div>
+            <div className="hat hat-right">🎩</div>
           </div>
 
           <div
@@ -95,7 +94,8 @@ export default function ProcessingOverlay({ editor }: ProcessingOverlayProps) {
               background: "rgba(0,0,0,0.4)",
               padding: "4px 12px",
               borderRadius: 99,
-              border: "1px solid rgba(255,255,255,0.1)"
+              border: "1px solid rgba(255,255,255,0.1)",
+              marginTop: 8,
             }}
           >
             Processing...

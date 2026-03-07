@@ -1,0 +1,330 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Color System ──────────────────────────────────────────────────── */
+:root {
+  /* Canvas */
+  --canvas-bg: #F5F5F3;
+  --canvas-grid: rgba(0, 0, 0, 0.03);
+
+  /* Surfaces */
+  --surface: #FFFFFF;
+  --surface-elevated: #FFFFFF;
+  --surface-hover: #F7F7F5;
+
+  /* Text */
+  --text-primary: #1A1A1A;
+  --text-secondary: #71717A;
+  --text-muted: #A1A1AA;
+
+  /* Accents */
+  --accent-blue: #2563EB;
+  --accent-yellow: #F5D547;
+  --accent-pink: #EC4899;
+  --accent-red: #EF4444;
+  --accent-teal: #14B8A6;
+
+  /* Borders */
+  --border: #E4E4E7;
+  --border-subtle: #F0F0EE;
+
+  /* Sticky note colors */
+  --sticky-yellow: #FEF9C3;
+  --sticky-pink: #FCE7F3;
+  --sticky-blue: #DBEAFE;
+  --sticky-green: #DCFCE7;
+  --sticky-purple: #F3E8FF;
+
+  /* Shadows */
+  --shadow-float: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  --shadow-float-lg: 0 8px 40px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-panel: 0 0 0 1px var(--border), 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] {
+  --canvas-bg: #1A1A1A;
+  --canvas-grid: rgba(255, 255, 255, 0.04);
+  --surface: #262626;
+  --surface-elevated: #2D2D2D;
+  --surface-hover: #333333;
+  --text-primary: #F5F5F5;
+  --text-secondary: #A1A1AA;
+  --text-muted: #71717A;
+  --border: #3F3F46;
+  --border-subtle: #333333;
+
+  --shadow-float: 0 4px 24px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.2);
+  --shadow-float-lg: 0 8px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-panel: 0 0 0 1px var(--border), 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Base ──────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--canvas-bg);
+  color: var(--text-primary);
+}
+
+/* ─── Scrollbars ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ─── tldraw Overrides ───────────────────────────────────────────────── */
+.tl-container {
+  font-family: "Inter", system-ui, sans-serif !important;
+}
+
+/* Override tldraw background to use our canvas color */
+.tl-background {
+  background: var(--canvas-bg) !important;
+}
+
+/* Ensure tldraw fills its container */
+.tldraw-canvas-wrapper {
+  position: absolute;
+  inset: 0;
+}
+
+.tldraw-canvas-wrapper .tl-container {
+  position: absolute;
+  inset: 0;
+}
+
+/* Dark mode tldraw overrides */
+[data-theme="dark"] .tl-background {
+  background: #1A1A1A !important;
+}
+
+/* ─── Floating UI Components ─────────────────────────────────────────── */
+.glass-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glass-panel-sm {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-float);
+}
+
+/* ─── Button Base ────────────────────────────────────────────────────── */
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, transform 100ms ease;
+  flex-shrink: 0;
+}
+
+.btn-icon:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.btn-icon.active {
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--accent-blue);
+}
+
+.btn-icon:active {
+  transform: scale(0.94);
+}
+
+/* ─── Sidebar ────────────────────────────────────────────────────────── */
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  height: 100%;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: width 200ms ease, min-width 200ms ease;
+  overflow: hidden;
+}
+
+.sidebar.collapsed {
+  width: 48px;
+  min-width: 48px;
+}
+
+/* ─── Toolbar (ToolRail) ─────────────────────────────────────────────── */
+.tool-rail {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-float);
+}
+
+/* ─── Zoom Controls ──────────────────────────────────────────────────── */
+.zoom-controls {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-float);
+}
+
+/* ─── AI Toolbar ─────────────────────────────────────────────────────── */
+.ai-toolbar {
+  position: fixed;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-float-lg);
+  animation: scaleIn 150ms ease;
+}
+
+/* ─── Context Menu ───────────────────────────────────────────────────── */
+.context-menu {
+  position: fixed;
+  z-index: 600;
+  min-width: 200px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-float-lg);
+  animation: scaleIn 150ms ease;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 80ms ease;
+  user-select: none;
+}
+
+.context-menu-item:hover {
+  background: var(--surface-hover);
+}
+
+.context-menu-item.danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--accent-red);
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* ─── Panels (Generate/Search) ───────────────────────────────────────── */
+.panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 150ms ease;
+}
+
+.panel-card {
+  width: 560px;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 96px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-float-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 200ms ease;
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Theme Transition ───────────────────────────────────────────────── */
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease !important;
+}

@@ -5,9 +5,6 @@
 
 /* ─── Color System ──────────────────────────────────────────────────── */
 :root {
-  /* Font */
-  --font-canvas: "Inter", system-ui, -apple-system, sans-serif;
-
   /* Canvas */
   --canvas-bg: #F5F5F3;
   --canvas-grid: rgba(0, 0, 0, 0.03);
@@ -73,7 +70,7 @@ body {
   height: 100%;
   margin: 0;
   padding: 0;
-  font-family: var(--font-canvas);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--canvas-bg);
@@ -98,15 +95,7 @@ body {
 
 /* ─── tldraw Overrides ───────────────────────────────────────────────── */
 .tl-container {
-  font-family: var(--font-canvas) !important;
-}
-
-/* tldraw text shapes pick up canvas font */
-.tl-text-content,
-.tl-text-label,
-.tl-note-container textarea,
-.tl-note-container [data-font] {
-  font-family: var(--font-canvas) !important;
+  font-family: "Inter", system-ui, sans-serif !important;
 }
 
 /* ─── Canvas Backgrounds ─────────────────────────────────────────────── */

@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
         prompt,
         referenceImageUrl,
         aspectRatio: aspectRatio ?? "1:1",
-        model: model ?? "flux",
+        model: model ?? "nano-banana-pro",
+        numImages: 1,
       }),
     });
 
@@ -36,7 +37,13 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await upstream.json();
-    return NextResponse.json(data);
+    // Normalize: gen.aditor.ai returns { success, url, model }
+    const imageUrl = data.url || data.imageUrl || (data.images && data.images[0]?.url);
+    return NextResponse.json({
+      imageUrl,
+      width: data.width || 512,
+      height: data.height || 512,
+    });
   } catch (err) {
     console.error("generate error:", err);
     return NextResponse.json(

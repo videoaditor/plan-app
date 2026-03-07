@@ -98,9 +98,11 @@ body {
   font-family: "Inter", system-ui, sans-serif !important;
 }
 
-/* Override tldraw background to use our canvas color */
+/* Override tldraw background — dot grid pattern */
 .tl-background {
-  background: var(--canvas-bg) !important;
+  background-color: var(--canvas-bg) !important;
+  background-image: radial-gradient(circle, var(--canvas-grid) 1px, transparent 1px) !important;
+  background-size: 20px 20px !important;
 }
 
 /* Ensure tldraw fills its container */
@@ -225,12 +227,43 @@ body {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 6px 8px;
+  padding: 4px 6px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow-float-lg);
   animation: scaleIn 150ms ease;
+}
+
+.ai-toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 80ms ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.ai-toolbar-btn:hover {
+  background: var(--surface-hover);
+}
+.ai-toolbar-btn:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+.ai-edit-btn:hover {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--accent-blue);
+}
+.spin {
+  animation: spin 0.8s linear infinite;
 }
 
 /* ─── Context Menu ───────────────────────────────────────────────────── */

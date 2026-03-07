@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
           ? { Authorization: `Bearer ${process.env.GEN_API_KEY}` }
           : {}),
       },
-      body: JSON.stringify({ imageUrl }),
+      body: JSON.stringify({ image_url: imageUrl }),
     });
 
     if (!upstream.ok) {
@@ -31,7 +31,8 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await upstream.json();
-    return NextResponse.json(data);
+    // Normalize response: gen.aditor.ai returns { success, url }
+    return NextResponse.json({ imageUrl: data.url || data.imageUrl || data.image_url });
   } catch (err) {
     console.error("remove-bg error:", err);
     return NextResponse.json(

@@ -98,19 +98,60 @@ body {
   font-family: "Inter", system-ui, sans-serif !important;
 }
 
+/* Hide tldraw's default style panel (colors, opacity, fill, etc.) */
+.tlui-style-panel,
+.tlui-style-panel__wrapper {
+  display: none !important;
+}
+
+/* Hide the pages menu ("Page 1" tab) */
+.tlui-page-menu,
+.tlui-page-menu__wrapper {
+  display: none !important;
+}
+
+/* Dark mode: fix tldraw text color */
+[data-theme="dark"] .tl-text-content,
+[data-theme="dark"] .tl-text-label__inner,
+[data-theme="dark"] .tl-note-container,
+[data-theme="dark"] .tl-text-shape__wrapper textarea,
+[data-theme="dark"] .tl-text-shape__wrapper div {
+  color: #F5F5F5 !important;
+}
+
+/* Dark mode: tldraw internal UI elements */
+[data-theme="dark"] .tl-container {
+  --color-text: #F5F5F5 !important;
+  --color-text-0: #F5F5F5 !important;
+  --color-text-1: #A1A1AA !important;
+  --color-text-shadow: none !important;
+  --color-background: #1A1A1A !important;
+  --color-panel: #262626 !important;
+}
+
+/* Light mode: ensure tldraw respects our theme */
+[data-theme="light"] .tl-container {
+  --color-text: #1A1A1A !important;
+  --color-text-0: #1A1A1A !important;
+  --color-background: #F5F5F3 !important;
+}
+
 /* ─── Canvas Backgrounds ─────────────────────────────────────────────── */
+/* --canvas-zoom is set by JS to track camera zoom level */
+/* background-size uses calc() so texture scales with zoom */
+
 /* Default: dots */
 .tl-background {
   background-color: var(--canvas-bg) !important;
   background-image: radial-gradient(circle, var(--canvas-grid) 1px, transparent 1px) !important;
-  background-size: 20px 20px !important;
+  background-size: calc(20px * var(--canvas-zoom, 1)) calc(20px * var(--canvas-zoom, 1)) !important;
 }
 
 /* Dots (explicit) */
 [data-canvas-bg="dots"] .tl-background {
   background-color: var(--canvas-bg) !important;
   background-image: radial-gradient(circle, var(--canvas-grid) 1px, transparent 1px) !important;
-  background-size: 20px 20px !important;
+  background-size: calc(20px * var(--canvas-zoom, 1)) calc(20px * var(--canvas-zoom, 1)) !important;
 }
 
 /* Grid — fine lines */
@@ -119,7 +160,7 @@ body {
   background-image:
     linear-gradient(var(--canvas-grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--canvas-grid) 1px, transparent 1px) !important;
-  background-size: 24px 24px !important;
+  background-size: calc(24px * var(--canvas-zoom, 1)) calc(24px * var(--canvas-zoom, 1)) !important;
 }
 
 /* Paper — warm cream with subtle fiber texture */
@@ -127,7 +168,7 @@ body {
   background-color: #F6F1E9 !important;
   background-image:
     url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.03'/%3E%3C/svg%3E") !important;
-  background-size: 200px 200px !important;
+  background-size: calc(200px * var(--canvas-zoom, 1)) calc(200px * var(--canvas-zoom, 1)) !important;
 }
 
 /* Blank — solid color, no pattern */
@@ -144,7 +185,11 @@ body {
     linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px),
     linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px) !important;
-  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px !important;
+  background-size:
+    calc(100px * var(--canvas-zoom, 1)) calc(100px * var(--canvas-zoom, 1)),
+    calc(100px * var(--canvas-zoom, 1)) calc(100px * var(--canvas-zoom, 1)),
+    calc(20px * var(--canvas-zoom, 1)) calc(20px * var(--canvas-zoom, 1)),
+    calc(20px * var(--canvas-zoom, 1)) calc(20px * var(--canvas-zoom, 1)) !important;
 }
 
 /* Cork — warm brown with speckle texture */
@@ -155,10 +200,10 @@ body {
     radial-gradient(ellipse at 80% 20%, rgba(139,90,43,0.1) 0%, transparent 50%),
     radial-gradient(ellipse at 50% 80%, rgba(160,120,60,0.12) 0%, transparent 40%),
     url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='cork'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23cork)' opacity='0.08'/%3E%3C/svg%3E") !important;
-  background-size: cover, cover, cover, 150px 150px !important;
+  background-size: cover, cover, cover, calc(150px * var(--canvas-zoom, 1)) calc(150px * var(--canvas-zoom, 1)) !important;
 }
 
-/* Dark mode overrides for specific backgrounds */
+/* Dark mode overrides */
 [data-theme="dark"] .tl-background {
   background-color: #1A1A1A !important;
 }
@@ -179,7 +224,6 @@ body {
   background-color: #1A1A1A !important;
   background-image: none !important;
 }
-/* Blueprint and cork stay the same in dark mode — they're already dark-ish */
 
 /* Ensure tldraw fills its container */
 .tldraw-canvas-wrapper {

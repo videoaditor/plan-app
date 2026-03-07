@@ -100,6 +100,18 @@ function CanvasUI({
     onMount(editor);
   }, [editor, onMount]);
 
+  // Sync zoom level to CSS variable so canvas texture scales with camera
+  useEffect(() => {
+    const updateZoom = () => {
+      const camera = editor.getCamera();
+      const zoom = camera.z;
+      document.documentElement.style.setProperty("--canvas-zoom", String(zoom));
+    };
+    updateZoom();
+    const unsub = editor.store.listen(updateZoom, { scope: "session" });
+    return () => unsub();
+  }, [editor]);
+
   // Listen for selection changes to show AI toolbar + animation picker
   useEffect(() => {
     const updateAiToolbar = () => {

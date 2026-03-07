@@ -13,12 +13,12 @@ interface CanvasBgOption {
 }
 
 const canvasBgs: CanvasBgOption[] = [
-  { id: "dots", label: "Dots", preview: "●" },
-  { id: "grid", label: "Grid", preview: "▦" },
-  { id: "paper", label: "Paper", preview: "📄" },
-  { id: "blank", label: "Blank", preview: "◻" },
-  { id: "blueprint", label: "Blueprint", preview: "🔵" },
-  { id: "cork", label: "Cork", preview: "🟤" },
+  { id: "dots", label: "Dots", preview: "·" },
+  { id: "grid", label: "Grid", preview: "#" },
+  { id: "paper", label: "Paper", preview: "~" },
+  { id: "blank", label: "Blank", preview: "—" },
+  { id: "blueprint", label: "Blue", preview: "+" },
+  { id: "cork", label: "Cork", preview: "%" },
 ];
 
 const CANVAS_BG_KEY = "plan-canvas-bg";

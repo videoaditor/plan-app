@@ -5,8 +5,9 @@ export const dynamic = "force-dynamic";
 
 const GEN_API_BASE = "https://gen.aditor.ai/api";
 
-// Upload base64 data URI to gen.aditor.ai, get back a fetchable URL
-async function uploadToTemp(dataUri: string): Promise<string> {
+// Upload base64 data URI to gen.aditor.ai, get back a local path
+// Returns /uploads/temp/... path that the backend can read directly
+async function uploadToTemp(dataUri: string): Promise<{ url: string; localPath: string }> {
   const res = await fetch(`${GEN_API_BASE}/upload-temp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -15,8 +16,10 @@ async function uploadToTemp(dataUri: string): Promise<string> {
   if (!res.ok) {
     throw new Error(`Upload failed: ${await res.text()}`);
   }
-  const { url } = await res.json();
-  return url;
+  const data = await res.json();
+  // Extract local path from URL: https://gen.aditor.ai/uploads/temp/xxx.jpg → /uploads/temp/xxx.jpg
+  const localPath = new URL(data.url).pathname;
+  return { url: data.url, localPath };
 }
 
 export async function POST(req: NextRequest) {
@@ -29,18 +32,19 @@ export async function POST(req: NextRequest) {
     }
 
     // If reference image is a data URI, upload it first
+    // Send as local path so backend reads directly (no circular HTTP)
     const references: string[] = [];
     if (referenceImageUrl) {
-      let refUrl = referenceImageUrl;
-      if (refUrl.startsWith("data:image")) {
+      if (referenceImageUrl.startsWith("data:image")) {
         try {
-          refUrl = await uploadToTemp(refUrl);
+          const { localPath } = await uploadToTemp(referenceImageUrl);
+          references.push(localPath); // /uploads/temp/xxx.jpg — read locally by backend
         } catch (err: any) {
           console.error("[generate] upload-temp failed:", err.message);
-          // Continue without reference — better than failing entirely
         }
+      } else {
+        references.push(referenceImageUrl);
       }
-      references.push(refUrl);
     }
 
     // When editing, make the prompt clearer for the model

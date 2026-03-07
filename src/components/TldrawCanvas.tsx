@@ -69,6 +69,63 @@ function AIContextMenu() {
           />
         </TldrawUiMenuGroup>
       )}
+
+      {/* Editorial Vox Tools */}
+      <TldrawUiMenuGroup id="vox-tools">
+        <TldrawUiMenuItem
+          id="vox-headline"
+          label="Add Vox Headline"
+          icon="text"
+          onSelect={async () => {
+            if (!editor) return;
+            const { createShapeId } = await import("@tldraw/tldraw");
+            const vp = editor.getViewportPageBounds();
+            const shapeId = createShapeId();
+
+            editor.createShapes([{
+              id: shapeId,
+              type: "text",
+              x: vp.x + vp.w / 2 - 150,
+              y: vp.y + vp.h / 2 - 50,
+              props: {
+                text: "BREAKING NEWS",
+                font: "serif",
+                size: "xl",
+                align: "middle",
+                color: "black",
+              },
+            }]);
+            editor.select(shapeId);
+          }}
+        />
+        <TldrawUiMenuItem
+          id="vox-highlight"
+          label="Add Yellow Highlight"
+          icon="blob"
+          onSelect={async () => {
+            if (!editor) return;
+            const { createShapeId } = await import("@tldraw/tldraw");
+            const vp = editor.getViewportPageBounds();
+            const shapeId = createShapeId();
+
+            editor.createShapes([{
+              id: shapeId,
+              type: "geo",
+              x: vp.x + vp.w / 2 - 100,
+              y: vp.y + vp.h / 2 - 20,
+              props: {
+                geo: "rectangle",
+                w: 200,
+                h: 40,
+                color: "yellow",
+                fill: "solid",
+              },
+            }]);
+            editor.sendToBack([shapeId]);
+            editor.select(shapeId);
+          }}
+        />
+      </TldrawUiMenuGroup>
       <DefaultContextMenuContent />
     </DefaultContextMenu>
   );

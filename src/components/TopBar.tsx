@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { PanelLeft } from "lucide-react";
+import { PanelLeft, RefreshCw } from "lucide-react";
 import { renameBoard, type Board } from "@/lib/boards";
 import ThemeToggle from "./ThemeToggle";
 import CanvasSettings from "./CanvasSettings";
@@ -22,6 +22,7 @@ export default function TopBar({
 }: TopBarProps) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(board.name);
+  const [deploying, setDeploying] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -184,6 +185,35 @@ export default function TopBar({
 
       {/* Right: actions */}
       <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
+        <button
+          onClick={async () => {
+            if (deploying) return;
+            setDeploying(true);
+            try {
+              const res = await fetch("/api/deploy", { method: "POST" });
+              const data = await res.json();
+              if (data.success) {
+                // Reload after a short delay to pick up new build
+                setTimeout(() => window.location.reload(), 2000);
+              } else {
+                console.error("Deploy failed:", data.error);
+                setDeploying(false);
+              }
+            } catch (err) {
+              console.error("Deploy error:", err);
+              setDeploying(false);
+            }
+          }}
+          className="btn-icon"
+          title="Pull & deploy from GitHub"
+          style={{ color: deploying ? "var(--accent-blue)" : undefined }}
+        >
+          <RefreshCw
+            size={16}
+            strokeWidth={1.75}
+            style={deploying ? { animation: "spin 1s linear infinite" } : undefined}
+          />
+        </button>
         <CanvasSettings />
         <ThemeToggle />
         <div

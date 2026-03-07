@@ -22,12 +22,13 @@ interface EffectOption {
 }
 
 const effects: EffectOption[] = [
-  // Motion group
+  // Motion group — continuous idle
   { id: "wiggle", label: "Wiggle", icon: "〰️", group: "motion" },
   { id: "float", label: "Float", icon: "🫧", group: "motion" },
-  { id: "pulse", label: "Pulse", icon: "💫", group: "motion" },
   { id: "sway", label: "Sway", icon: "🌿", group: "motion" },
-  { id: "bounce", label: "Bounce", icon: "⚡", group: "motion" },
+  // Motion group — hover-triggered
+  { id: "pulse", label: "Pulse (on hover)", icon: "💫", group: "motion" },
+  { id: "bounce", label: "Bounce (on hover)", icon: "⚡", group: "motion" },
   // Cinematic group
   { id: "kenburns", label: "Ken Burns", icon: "🎬", group: "cinematic" },
   { id: "vignette", label: "Vignette", icon: "🔲", group: "cinematic" },

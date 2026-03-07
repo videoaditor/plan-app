@@ -15,7 +15,6 @@ export default function BoardPage() {
   const [board, setBoard] = useState<Board | null>(null);
   const [boards, setBoards] = useState<Board[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     const allBoards = getBoards();

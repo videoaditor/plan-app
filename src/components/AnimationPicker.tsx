@@ -3,7 +3,17 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Editor } from "@tldraw/tldraw";
 
-export type AnimationType = "none" | "wiggle" | "float" | "pulse" | "sway" | "bounce";
+export type AnimationType =
+  | "none"
+  | "wiggle"
+  | "float"
+  | "pulse"
+  | "sway"
+  | "bounce"
+  | "stopmotion"
+  | "elevate"
+  | "reveal"
+  | "kenburns";
 
 interface AnimationOption {
   id: AnimationType;
@@ -17,6 +27,11 @@ const animations: AnimationOption[] = [
   { id: "pulse", label: "Pulse", icon: "💫" },
   { id: "sway", label: "Sway", icon: "🌿" },
   { id: "bounce", label: "Bounce", icon: "⚡" },
+  // Vox Styles
+  { id: "stopmotion", label: "Stop Motion", icon: "✂️" },
+  { id: "elevate", label: "Elevate", icon: "⬆️" },
+  { id: "reveal", label: "Reveal", icon: "🎞️" },
+  { id: "kenburns", label: "Ken Burns", icon: "📹" },
 ];
 
 interface AnimationPickerProps {
@@ -87,24 +102,37 @@ export default function AnimationPicker({
       }}
     >
       {expanded ? (
-        <div className="animation-picker-expanded">
+        <div
+          className="animation-picker-expanded"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(5, 1fr)",
+            gap: "4px",
+            padding: "8px",
+            background: "var(--surface)",
+            borderRadius: "16px",
+            width: "180px",
+          }}
+        >
           {animations.map((anim) => (
             <button
               key={anim.id}
               className={`animation-option ${currentAnimation === anim.id ? "active" : ""}`}
               onClick={() => setAnimation(anim.id)}
               title={anim.label}
+              style={{ width: "32px", height: "32px", borderRadius: "8px" }}
             >
-              <span className="animation-option-icon">{anim.icon}</span>
+              <span className="animation-option-icon" style={{ fontSize: "16px" }}>{anim.icon}</span>
             </button>
           ))}
           {hasAnimation && (
             <button
               className="animation-option stop"
               onClick={clearAnimation}
-              title="Stop"
+              title="Stop Animation"
+              style={{ width: "32px", height: "32px", borderRadius: "8px", gridColumn: "span 5", marginTop: "4px" }}
             >
-              <span className="animation-option-icon">✕</span>
+              Stop
             </button>
           )}
         </div>
@@ -128,4 +156,54 @@ export function getShapeAnimation(editor: Editor, shapeId: string): AnimationTyp
   const shape = editor.getShape(shapeId as any);
   if (!shape) return "none";
   return ((shape.meta as any)?.animation as AnimationType) || "none";
+}
+
+// ─── Apply animations directly to DOM containers ──────────────────────
+export function ShapeAnimations({ editor }: { editor: Editor }) {
+  useEffect(() => {
+    let lastAnimatedIds = new Set<string>();
+
+    const updateDOM = () => {
+      const shapes = editor.getCurrentPageShapes();
+      const currentAnimatedIds = new Set<string>();
+
+      for (const shape of shapes) {
+        const anim = (shape.meta as any)?.animation as AnimationType;
+        // Find the shape element in the DOM by its data attribute
+        const domEl = document.querySelector(`[data-shape-id="${shape.id}"]`) as HTMLElement;
+        if (!domEl) continue;
+
+        if (anim && anim !== "none") {
+          currentAnimatedIds.add(shape.id);
+          // Apply class
+          domEl.classList.forEach((cls) => {
+            if (cls.startsWith("anim-") && cls !== `anim-${anim}`) {
+              domEl.classList.remove(cls);
+            }
+          });
+          domEl.classList.add(`anim-${anim}`);
+        } else if (lastAnimatedIds.has(shape.id)) {
+          // Remove old animation classes
+          domEl.classList.forEach((cls) => {
+            if (cls.startsWith("anim-")) {
+              domEl.classList.remove(cls);
+            }
+          });
+        }
+      }
+
+      lastAnimatedIds = currentAnimatedIds;
+    };
+
+    updateDOM();
+    const unsubShape = editor.store.listen(updateDOM, { scope: "document" });
+    const unsubView = editor.store.listen(updateDOM, { scope: "session" });
+
+    return () => {
+      unsubShape();
+      unsubView();
+    };
+  }, [editor]);
+
+  return null;
 }

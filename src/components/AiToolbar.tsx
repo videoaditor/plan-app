@@ -60,7 +60,7 @@ async function runRemoveBg(
         type: "image",
         meta: {
           ...(editor.getShape(shapeId as any)?.meta || {}),
-          processing: undefined,
+          processing: false,
         },
       },
     ]);
@@ -74,11 +74,11 @@ async function runRemoveBg(
           type: "image",
           meta: {
             ...(editor.getShape(shapeId as any)?.meta || {}),
-            processing: undefined,
+            processing: false,
           },
         },
       ]);
-    } catch {}
+    } catch { }
   }
 }
 
@@ -129,7 +129,7 @@ async function runAiEdit(
         type: "image",
         meta: {
           ...(editor.getShape(shapeId as any)?.meta || {}),
-          processing: undefined,
+          processing: false,
         },
       },
     ]);
@@ -142,11 +142,11 @@ async function runAiEdit(
           type: "image",
           meta: {
             ...(editor.getShape(shapeId as any)?.meta || {}),
-            processing: undefined,
+            processing: false,
           },
         },
       ]);
-    } catch {}
+    } catch { }
   }
 }
 
@@ -257,11 +257,11 @@ export default function AiToolbar({
                 type: "image",
                 meta: {
                   ...(editor.getShape(shapeId as any)?.meta || {}),
-                  processing: undefined,
+                  processing: false,
                 },
               },
             ]);
-          } catch {}
+          } catch { }
         });
     } else {
       runAiEdit(editor, shapeId, src, currentPrompt, w, h).finally(() => {

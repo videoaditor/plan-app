@@ -58,6 +58,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         prompt: editPrompt,
         references: references.length > 0 ? references : undefined,
+        image_url: references.length > 0 ? references[0] : undefined,
         ratio: aspectRatio ?? "1:1",
         model: model ?? "nano-banana-pro",
       }),

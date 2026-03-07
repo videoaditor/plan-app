@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const maxDuration = 120;
+export const dynamic = "force-dynamic";
+
 const GEN_API_BASE = "https://gen.aditor.ai/api";
 
 export async function POST(req: NextRequest) {

@@ -20,22 +20,18 @@ import {
   useCallback,
 } from "react";
 import {
-  Copy,
-  Clipboard,
-  Trash2,
-  Layers,
   Wand2,
   Search,
-  Plus,
 } from "lucide-react";
 
 import ToolRail from "./ToolRail";
 import ZoomControls from "./ZoomControls";
 import AiToolbar from "./AiToolbar";
-import AnimationPicker, { getShapeAnimation, type AnimationType } from "./AnimationPicker";
+import AnimationPicker, { getShapeAnimation, ShapeAnimations, type AnimationType } from "./AnimationPicker";
 import ProcessingOverlay from "./ProcessingOverlay";
 import GeneratePanel from "./GeneratePanel";
 import SearchPanel from "./SearchPanel";
+import PresentationMode from "./PresentationMode";
 
 // ─── Context for panel state ─────────────────────────────────────────
 interface CanvasPanelState {
@@ -44,8 +40,8 @@ interface CanvasPanelState {
 }
 
 const CanvasPanelContext = createContext<CanvasPanelState>({
-  openGenerate: () => {},
-  openSearch: () => {},
+  openGenerate: () => { },
+  openSearch: () => { },
 });
 
 // ─── Custom context menu ─────────────────────────────────────────────
@@ -161,7 +157,7 @@ function CanvasUI({
 
     const unsub = editor.store.listen(updateAiToolbar, { scope: "session" });
     return () => unsub();
-  }, [editor]);
+  }, [editor, openGenerate, openSearch]);
 
   const handleAiEdit = useCallback(() => {
     if (aiReferenceImage) {
@@ -187,6 +183,8 @@ function CanvasUI({
         />
       )}
       <ProcessingOverlay editor={editor} />
+      <ShapeAnimations editor={editor} />
+      <PresentationMode editor={editor} />
     </>
   );
 }

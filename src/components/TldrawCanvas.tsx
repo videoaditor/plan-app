@@ -32,6 +32,7 @@ import {
 import ToolRail from "./ToolRail";
 import ZoomControls from "./ZoomControls";
 import AiToolbar from "./AiToolbar";
+import AnimationPicker, { useShapeAnimations, getShapeAnimation, type AnimationType } from "./AnimationPicker";
 import GeneratePanel from "./GeneratePanel";
 import SearchPanel from "./SearchPanel";
 
@@ -90,12 +91,18 @@ function CanvasUI({
     src: string;
     shapeId: string;
   } | null>(null);
+  const [animPickerPos, setAnimPickerPos] = useState<{ x: number; y: number } | null>(null);
+  const [animPickerShapeId, setAnimPickerShapeId] = useState<string | null>(null);
+  const [animPickerCurrent, setAnimPickerCurrent] = useState<AnimationType>("none");
+
+  // Hook: apply CSS animations to shapes
+  useShapeAnimations(editor);
 
   useEffect(() => {
     onMount(editor);
   }, [editor, onMount]);
 
-  // Listen for selection changes to show AI toolbar
+  // Listen for selection changes to show AI toolbar + animation picker
   useEffect(() => {
     const updateAiToolbar = () => {
       const shapes = editor.getSelectedShapes();
@@ -105,11 +112,21 @@ function CanvasUI({
         const bounds = editor.getSelectionRotatedPageBounds();
         if (bounds) {
           try {
+            // AI toolbar — top center
             const screenPoint = editor.pageToScreen({
               x: bounds.minX + bounds.w / 2,
               y: bounds.minY,
             });
             setAiToolbarPos({ x: screenPoint.x, y: screenPoint.y - 52 });
+
+            // Animation picker — bottom right
+            const bottomRight = editor.pageToScreen({
+              x: bounds.maxX,
+              y: bounds.maxY,
+            });
+            setAnimPickerPos({ x: bottomRight.x + 8, y: bottomRight.y - 36 });
+            setAnimPickerShapeId(imageShape.id);
+            setAnimPickerCurrent(getShapeAnimation(editor, imageShape.id));
 
             // Get reference image src
             const asset = editor.getAsset((imageShape.props as any).assetId);
@@ -121,11 +138,14 @@ function CanvasUI({
             }
           } catch {
             setAiToolbarPos(null);
+            setAnimPickerPos(null);
           }
         }
       } else {
         setAiToolbarPos(null);
         setAiReferenceImage(null);
+        setAnimPickerPos(null);
+        setAnimPickerShapeId(null);
       }
     };
 
@@ -146,6 +166,14 @@ function CanvasUI({
           editor={editor}
           position={aiToolbarPos}
           onAiEdit={handleAiEdit}
+        />
+      )}
+      {animPickerPos && animPickerShapeId && (
+        <AnimationPicker
+          editor={editor}
+          position={animPickerPos}
+          shapeId={animPickerShapeId}
+          currentAnimation={animPickerCurrent}
         />
       )}
     </>

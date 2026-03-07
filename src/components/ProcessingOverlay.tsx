@@ -56,7 +56,6 @@ export default function ProcessingOverlay({ editor }: ProcessingOverlayProps) {
       {processingShapes.map((ps) => (
         <div
           key={ps.id}
-          className="processing-overlay"
           style={{
             position: "fixed",
             left: ps.bounds.x,
@@ -65,8 +64,43 @@ export default function ProcessingOverlay({ editor }: ProcessingOverlayProps) {
             height: ps.bounds.h,
             pointerEvents: "none",
             zIndex: 450,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "column",
+            gap: 16,
+            backdropFilter: "blur(12px) brightness(0.8)",
+            boxShadow: "inset 0 0 100px rgba(0,0,0,0.5)",
+            borderRadius: 8,
+            overflow: "hidden",
+            color: "white",
+            animation: "entranceScale 0.3s ease-out forwards",
           }}
-        />
+        >
+          {/* Concentric Lens Ring */}
+          <div className="processing-lens-ring">
+            <div className="ring inner" />
+            <div className="ring middle" />
+            <div className="ring outer" />
+            <div className="center-dot" />
+          </div>
+
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              opacity: 0.8,
+              background: "rgba(0,0,0,0.4)",
+              padding: "4px 12px",
+              borderRadius: 99,
+              border: "1px solid rgba(255,255,255,0.1)"
+            }}
+          >
+            Processing...
+          </div>
+        </div>
       ))}
     </>
   );

@@ -959,3 +959,83 @@ path.tl-stroke-draw[stroke-dasharray],
 path.tl-stroke-solid[stroke-dasharray] {
   animation: dash-flow 2s linear infinite;
 }
+
+/* ─── PROCESSING LENS RING ────────────────────────────────────────── */
+.processing-lens-ring {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.processing-lens-ring .ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.processing-lens-ring .outer {
+  width: 64px;
+  height: 64px;
+  border-top-color: var(--accent-blue);
+  animation: spin 3s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+
+.processing-lens-ring .middle {
+  width: 44px;
+  height: 44px;
+  border-right-color: var(--accent-blue);
+  animation: spin-reverse 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+
+.processing-lens-ring .inner {
+  width: 24px;
+  height: 24px;
+  border-bottom-color: var(--accent-blue);
+  animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+}
+
+.processing-lens-ring .center-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-blue);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes spin {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  }
+
+  50% {
+    transform: translate(-50%, -50%) rotate(180deg) scale(1.1);
+  }
+
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg) scale(1);
+  }
+}
+
+@keyframes spin-reverse {
+  0% {
+    transform: translate(-50%, -50%) rotate(360deg) scale(1);
+  }
+
+  50% {
+    transform: translate(-50%, -50%) rotate(180deg) scale(0.9);
+  }
+
+  100% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  }
+}

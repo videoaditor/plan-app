@@ -5,6 +5,9 @@
 
 /* ─── Color System ──────────────────────────────────────────────────── */
 :root {
+  /* Font */
+  --font-canvas: "Inter", system-ui, -apple-system, sans-serif;
+
   /* Canvas */
   --canvas-bg: #F5F5F3;
   --canvas-grid: rgba(0, 0, 0, 0.03);
@@ -70,7 +73,7 @@ body {
   height: 100%;
   margin: 0;
   padding: 0;
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-canvas);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--canvas-bg);
@@ -95,15 +98,99 @@ body {
 
 /* ─── tldraw Overrides ───────────────────────────────────────────────── */
 .tl-container {
-  font-family: "Inter", system-ui, sans-serif !important;
+  font-family: var(--font-canvas) !important;
 }
 
-/* Override tldraw background — dot grid pattern */
+/* tldraw text shapes pick up canvas font */
+.tl-text-content,
+.tl-text-label,
+.tl-note-container textarea,
+.tl-note-container [data-font] {
+  font-family: var(--font-canvas) !important;
+}
+
+/* ─── Canvas Backgrounds ─────────────────────────────────────────────── */
+/* Default: dots */
 .tl-background {
   background-color: var(--canvas-bg) !important;
   background-image: radial-gradient(circle, var(--canvas-grid) 1px, transparent 1px) !important;
   background-size: 20px 20px !important;
 }
+
+/* Dots (explicit) */
+[data-canvas-bg="dots"] .tl-background {
+  background-color: var(--canvas-bg) !important;
+  background-image: radial-gradient(circle, var(--canvas-grid) 1px, transparent 1px) !important;
+  background-size: 20px 20px !important;
+}
+
+/* Grid — fine lines */
+[data-canvas-bg="grid"] .tl-background {
+  background-color: var(--canvas-bg) !important;
+  background-image:
+    linear-gradient(var(--canvas-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--canvas-grid) 1px, transparent 1px) !important;
+  background-size: 24px 24px !important;
+}
+
+/* Paper — warm cream with subtle fiber texture */
+[data-canvas-bg="paper"] .tl-background {
+  background-color: #F6F1E9 !important;
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.03'/%3E%3C/svg%3E") !important;
+  background-size: 200px 200px !important;
+}
+
+/* Blank — solid color, no pattern */
+[data-canvas-bg="blank"] .tl-background {
+  background-color: var(--canvas-bg) !important;
+  background-image: none !important;
+}
+
+/* Blueprint — classic blue engineering paper */
+[data-canvas-bg="blueprint"] .tl-background {
+  background-color: #1B3A5C !important;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px) !important;
+  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px !important;
+}
+
+/* Cork — warm brown with speckle texture */
+[data-canvas-bg="cork"] .tl-background {
+  background-color: #C4A76C !important;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(139,90,43,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(139,90,43,0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(160,120,60,0.12) 0%, transparent 40%),
+    url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='cork'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23cork)' opacity='0.08'/%3E%3C/svg%3E") !important;
+  background-size: cover, cover, cover, 150px 150px !important;
+}
+
+/* Dark mode overrides for specific backgrounds */
+[data-theme="dark"] .tl-background {
+  background-color: #1A1A1A !important;
+}
+[data-theme="dark"][data-canvas-bg="dots"] .tl-background {
+  background-color: #1A1A1A !important;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px) !important;
+}
+[data-theme="dark"][data-canvas-bg="grid"] .tl-background {
+  background-color: #1A1A1A !important;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px) !important;
+}
+[data-theme="dark"][data-canvas-bg="paper"] .tl-background {
+  background-color: #2A2520 !important;
+}
+[data-theme="dark"][data-canvas-bg="blank"] .tl-background {
+  background-color: #1A1A1A !important;
+  background-image: none !important;
+}
+/* Blueprint and cork stay the same in dark mode — they're already dark-ish */
 
 /* Ensure tldraw fills its container */
 .tldraw-canvas-wrapper {
@@ -114,11 +201,6 @@ body {
 .tldraw-canvas-wrapper .tl-container {
   position: absolute;
   inset: 0;
-}
-
-/* Dark mode tldraw overrides */
-[data-theme="dark"] .tl-background {
-  background: #1A1A1A !important;
 }
 
 /* ─── Floating UI Components ─────────────────────────────────────────── */

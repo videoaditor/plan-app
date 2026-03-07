@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PanelLeft } from "lucide-react";
 import { renameBoard, type Board } from "@/lib/boards";
 import ThemeToggle from "./ThemeToggle";
+import CanvasSettings from "./CanvasSettings";
 
 interface TopBarProps {
   board: Board;
@@ -183,6 +184,7 @@ export default function TopBar({
 
       {/* Right: actions */}
       <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
+        <CanvasSettings />
         <ThemeToggle />
         <div
           style={{

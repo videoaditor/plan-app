@@ -1,0 +1,85 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Create deployment archive
+        run: |
+          tar -czf deploy.tar.gz \
+            .next \
+            public \
+            package.json \
+            package-lock.json \
+            next.config.ts \
+            postcss.config.js \
+            tailwind.config.ts
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 46.224.96.47
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "deploy.tar.gz"
+          target: "/tmp/"
+
+      - name: Restart app on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 46.224.96.47
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            APP_DIR="/opt/plan-app"
+            mkdir -p $APP_DIR
+
+            # Extract build artifacts
+            tar -xzf /tmp/deploy.tar.gz -C $APP_DIR
+            rm /tmp/deploy.tar.gz
+
+            # Install production dependencies
+            cd $APP_DIR
+            npm ci --omit=dev
+
+            # Ensure PM2 is installed
+            if ! command -v pm2 &> /dev/null; then
+              npm install -g pm2
+            fi
+
+            # Start or restart with PM2
+            if pm2 list | grep -q "plan-app"; then
+              pm2 restart plan-app
+            else
+              pm2 start npm --name "plan-app" -- start
+              pm2 save
+              pm2 startup
+            fi
+
+            echo "Deployment complete ✓"

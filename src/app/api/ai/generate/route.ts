@@ -11,20 +11,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "prompt is required" }, { status: 400 });
     }
 
+    // Build references array — this is what gen.aditor.ai expects
+    const references: string[] = [];
+    if (referenceImageUrl) {
+      references.push(referenceImageUrl);
+    }
+
     const upstream = await fetch(`${GEN_API_BASE}/generate`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(process.env.GEN_API_KEY
-          ? { Authorization: `Bearer ${process.env.GEN_API_KEY}` }
-          : {}),
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt,
-        referenceImageUrl,
-        aspectRatio: aspectRatio ?? "1:1",
+        references: references.length > 0 ? references : undefined,
+        ratio: aspectRatio ?? "1:1",
         model: model ?? "nano-banana-pro",
-        numImages: 1,
       }),
     });
 
@@ -37,7 +37,6 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await upstream.json();
-    // Normalize: gen.aditor.ai returns { success, url, model }
     const imageUrl = data.url || data.imageUrl || (data.images && data.images[0]?.url);
     return NextResponse.json({
       imageUrl,

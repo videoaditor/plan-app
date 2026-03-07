@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Wand2, Scissors, Loader2, Send, X } from "lucide-react";
+import { Wand2, Scissors, Loader2, Send, X, Video } from "lucide-react";
 import type { Editor } from "@tldraw/tldraw";
-import { removeBackground, generateImage } from "@/lib/ai";
+import { removeBackground, generateImage, animateImage } from "@/lib/ai";
 
 interface AiToolbarProps {
   editor: Editor;
@@ -13,59 +13,45 @@ interface AiToolbarProps {
 
 export default function AiToolbar({ editor, position, onAiEdit }: AiToolbarProps) {
   const [removingBg, setRemovingBg] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [editPrompt, setEditPrompt] = useState("");
-  const [editing, setEditing] = useState(false);
+  const [editMode, setEditMode] = useState<false | "image" | "video">(false);
+  const [prompt, setPrompt] = useState("");
+  const [processing, setProcessing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (editMode && inputRef.current) {
-      inputRef.current.focus();
-    }
+    if (editMode && inputRef.current) inputRef.current.focus();
   }, [editMode]);
 
   const getSelectedImageInfo = () => {
     const shapes = editor.getSelectedShapes();
     const imageShape = shapes.find((s) => s.type === "image");
     if (!imageShape) return null;
-
     const assetId = (imageShape.props as any).assetId;
     if (!assetId) return null;
-
     const asset = editor.getAsset(assetId);
     if (!asset) return null;
-
     const src = (asset.props as any).src as string;
     if (!src) return null;
-
     return { shape: imageShape, asset, src };
   };
 
   const replaceImageAsset = useCallback(async (imageUrl: string) => {
     const info = getSelectedImageInfo();
     if (!info) return;
-
     const { AssetRecordType } = await import("@tldraw/tldraw");
     const newAssetId = AssetRecordType.createId();
-
     editor.createAssets([{
-      id: newAssetId,
-      type: "image",
-      typeName: "asset",
+      id: newAssetId, type: "image", typeName: "asset",
       props: {
-        name: "processed.png",
-        src: imageUrl,
+        name: "processed.png", src: imageUrl,
         w: (info.asset.props as any).w || 512,
         h: (info.asset.props as any).h || 512,
-        mimeType: "image/png",
-        isAnimated: false,
+        mimeType: "image/png", isAnimated: false,
       },
       meta: {},
     }]);
-
     editor.updateShapes([{
-      id: info.shape.id,
-      type: "image",
+      id: info.shape.id, type: "image",
       props: { assetId: newAssetId },
     }]);
   }, [editor]);
@@ -73,7 +59,6 @@ export default function AiToolbar({ editor, position, onAiEdit }: AiToolbarProps
   const handleRemoveBg = async () => {
     const info = getSelectedImageInfo();
     if (!info || removingBg) return;
-
     setRemovingBg(true);
     try {
       const { imageUrl } = await removeBackground(info.src);
@@ -85,25 +70,42 @@ export default function AiToolbar({ editor, position, onAiEdit }: AiToolbarProps
     }
   };
 
-  const handleAiEdit = async () => {
-    if (!editPrompt.trim() || editing) return;
+  const handleSubmit = async () => {
+    if (!prompt.trim() || processing) return;
     const info = getSelectedImageInfo();
     if (!info) return;
 
-    setEditing(true);
+    setProcessing(true);
     try {
-      const result = await generateImage({
-        prompt: editPrompt.trim(),
-        referenceImageUrl: info.src,
-      });
-      if (result.imageUrl) await replaceImageAsset(result.imageUrl);
+      if (editMode === "video") {
+        // Animate: image → video with bg removal
+        const result = await animateImage(info.src, prompt.trim());
+        if (result.videoUrl) {
+          // For now, copy URL — tldraw doesn't natively support video shapes
+          await navigator.clipboard.writeText(result.videoUrl);
+          // TODO: add custom video shape type
+          console.log("[plan] Video ready:", result.videoUrl);
+        }
+      } else {
+        // AI Edit: image + prompt → new image
+        const result = await generateImage({
+          prompt: prompt.trim(),
+          referenceImageUrl: info.src,
+        });
+        if (result.imageUrl) await replaceImageAsset(result.imageUrl);
+      }
       setEditMode(false);
-      setEditPrompt("");
+      setPrompt("");
     } catch (err) {
-      console.error("AI Edit failed:", err);
+      console.error(editMode === "video" ? "Animate failed:" : "AI Edit failed:", err);
     } finally {
-      setEditing(false);
+      setProcessing(false);
     }
+  };
+
+  const switchMode = (mode: "image" | "video") => {
+    setEditMode(mode);
+    setPrompt("");
   };
 
   return (
@@ -118,11 +120,7 @@ export default function AiToolbar({ editor, position, onAiEdit }: AiToolbarProps
     >
       {!editMode ? (
         <>
-          <button
-            onClick={handleRemoveBg}
-            disabled={removingBg}
-            className="ai-toolbar-btn"
-          >
+          <button onClick={handleRemoveBg} disabled={removingBg} className="ai-toolbar-btn">
             {removingBg ? (
               <Loader2 size={14} strokeWidth={2} className="spin" />
             ) : (
@@ -131,73 +129,98 @@ export default function AiToolbar({ editor, position, onAiEdit }: AiToolbarProps
             {removingBg ? "Removing…" : "Remove BG"}
           </button>
 
-          <div style={{ width: 1, height: 18, background: "var(--border)", margin: "0 2px" }} />
+          <div className="ai-toolbar-sep" />
 
-          <button
-            onClick={() => setEditMode(true)}
-            className="ai-toolbar-btn ai-edit-btn"
-          >
+          <button onClick={() => switchMode("image")} className="ai-toolbar-btn ai-edit-btn">
             <Wand2 size={14} strokeWidth={1.75} />
             AI Edit
           </button>
         </>
       ) : (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 4px" }}>
-          <Wand2 size={14} strokeWidth={1.75} color="var(--accent-blue)" style={{ flexShrink: 0 }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 4px" }}>
+          {/* Mode toggle: image / video */}
+          <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--border)", flexShrink: 0 }}>
+            <button
+              onClick={() => switchMode("image")}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: 28, height: 26, border: "none",
+                background: editMode === "image" ? "var(--accent-blue)" : "transparent",
+                color: editMode === "image" ? "#fff" : "var(--text-muted)",
+                cursor: "pointer", transition: "all 100ms",
+              }}
+              title="AI Edit (image)"
+            >
+              <Wand2 size={13} strokeWidth={2} />
+            </button>
+            <button
+              onClick={() => switchMode("video")}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: 28, height: 26, border: "none",
+                borderLeft: "1px solid var(--border)",
+                background: editMode === "video" ? "var(--accent-blue)" : "transparent",
+                color: editMode === "video" ? "#fff" : "var(--text-muted)",
+                cursor: "pointer", transition: "all 100ms",
+              }}
+              title="Animate (video)"
+            >
+              <Video size={13} strokeWidth={2} />
+            </button>
+          </div>
+
+          {/* Prompt input */}
           <input
             ref={inputRef}
             type="text"
-            value={editPrompt}
-            onChange={(e) => setEditPrompt(e.target.value)}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleAiEdit();
-              if (e.key === "Escape") { setEditMode(false); setEditPrompt(""); }
+              if (e.key === "Enter") handleSubmit();
+              if (e.key === "Escape") { setEditMode(false); setPrompt(""); }
             }}
-            placeholder="Describe the edit…"
-            disabled={editing}
+            placeholder={editMode === "video" ? "Describe the motion…" : "Describe the edit…"}
+            disabled={processing}
             style={{
-              width: 220,
-              padding: "5px 8px",
+              width: 200, padding: "5px 8px",
               background: "var(--surface-hover)",
-              border: "1px solid var(--border)",
-              borderRadius: 6,
-              fontSize: 12,
-              color: "var(--text-primary)",
-              outline: "none",
-              fontFamily: "inherit",
+              border: "1px solid var(--border)", borderRadius: 6,
+              fontSize: 12, color: "var(--text-primary)",
+              outline: "none", fontFamily: "inherit",
             }}
           />
-          {editing ? (
-            <Loader2 size={14} strokeWidth={2} className="spin" color="var(--accent-blue)" />
+
+          {/* Send / loading */}
+          {processing ? (
+            <Loader2 size={14} strokeWidth={2} className="spin" color="var(--accent-blue)" style={{ flexShrink: 0 }} />
           ) : (
-            <>
-              <button
-                onClick={handleAiEdit}
-                disabled={!editPrompt.trim()}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 26, height: 26, borderRadius: 6, border: "none",
-                  background: editPrompt.trim() ? "var(--accent-blue)" : "var(--border)",
-                  color: editPrompt.trim() ? "#fff" : "var(--text-muted)",
-                  cursor: editPrompt.trim() ? "pointer" : "not-allowed",
-                  flexShrink: 0,
-                }}
-              >
-                <Send size={12} strokeWidth={2} />
-              </button>
-              <button
-                onClick={() => { setEditMode(false); setEditPrompt(""); }}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 22, height: 22, borderRadius: 4, border: "none",
-                  background: "transparent", color: "var(--text-muted)",
-                  cursor: "pointer", flexShrink: 0,
-                }}
-              >
-                <X size={12} strokeWidth={2} />
-              </button>
-            </>
+            <button
+              onClick={handleSubmit}
+              disabled={!prompt.trim()}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: 26, height: 26, borderRadius: 6, border: "none",
+                background: prompt.trim() ? "var(--accent-blue)" : "var(--border)",
+                color: prompt.trim() ? "#fff" : "var(--text-muted)",
+                cursor: prompt.trim() ? "pointer" : "not-allowed", flexShrink: 0,
+              }}
+            >
+              <Send size={12} strokeWidth={2} />
+            </button>
           )}
+
+          {/* Close */}
+          <button
+            onClick={() => { setEditMode(false); setPrompt(""); }}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              width: 22, height: 22, borderRadius: 4, border: "none",
+              background: "transparent", color: "var(--text-muted)",
+              cursor: "pointer", flexShrink: 0,
+            }}
+          >
+            <X size={12} strokeWidth={2} />
+          </button>
         </div>
       )}
     </div>

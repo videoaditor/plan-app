@@ -51,6 +51,25 @@ export async function removeBackground(imageUrl: string): Promise<RemoveBgResult
   return res.json();
 }
 
+export interface AnimateResult {
+  videoUrl: string;
+  embedHtml?: string;
+  jobId?: string;
+}
+
+export async function animateImage(imageUrl: string, prompt?: string): Promise<AnimateResult> {
+  const res = await fetch("/api/ai/animate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ imageUrl, prompt }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Animate failed: ${err}`);
+  }
+  return res.json();
+}
+
 export async function searchImages(query: string, page = 1): Promise<ImageSearchResult[]> {
   const params = new URLSearchParams({ q: query, page: String(page) });
   const res = await fetch(`/api/ai/image-search?${params}`);

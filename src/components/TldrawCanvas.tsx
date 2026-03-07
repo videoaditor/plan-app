@@ -32,7 +32,8 @@ import {
 import ToolRail from "./ToolRail";
 import ZoomControls from "./ZoomControls";
 import AiToolbar from "./AiToolbar";
-import AnimationPicker, { useShapeAnimations, getShapeAnimation, type AnimationType } from "./AnimationPicker";
+import AnimationPicker, { getShapeAnimation, type AnimationType } from "./AnimationPicker";
+import ProcessingOverlay from "./ProcessingOverlay";
 import GeneratePanel from "./GeneratePanel";
 import SearchPanel from "./SearchPanel";
 
@@ -94,9 +95,6 @@ function CanvasUI({
   const [animPickerPos, setAnimPickerPos] = useState<{ x: number; y: number } | null>(null);
   const [animPickerShapeId, setAnimPickerShapeId] = useState<string | null>(null);
   const [animPickerCurrent, setAnimPickerCurrent] = useState<AnimationType>("none");
-
-  // Hook: apply CSS animations to shapes
-  useShapeAnimations(editor);
 
   useEffect(() => {
     onMount(editor);
@@ -176,6 +174,7 @@ function CanvasUI({
           currentAnimation={animPickerCurrent}
         />
       )}
+      <ProcessingOverlay editor={editor} />
     </>
   );
 }

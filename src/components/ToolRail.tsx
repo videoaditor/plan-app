@@ -11,9 +11,13 @@ import {
   ArrowRight,
   Image,
   Eraser,
+  ChevronRight,
   Minus,
   Triangle,
-  ChevronRight,
+  Pencil,
+  XIcon,
+  Parentheses,
+  CornerDownRight
 } from "lucide-react";
 import type { Editor } from "@tldraw/tldraw";
 
@@ -103,9 +107,31 @@ const shapeTools = [
   },
 ];
 
+const voxShapes = [
+  {
+    id: "vox-x",
+    label: "Scribble X",
+    icon: <XIcon size={16} strokeWidth={2.5} color="var(--accent-red)" />,
+    props: { geo: "x-box", color: "red", fill: "none", size: "m", dash: "draw" }
+  },
+  {
+    id: "vox-arrow",
+    label: "Sketch Arrow",
+    icon: <CornerDownRight size={16} strokeWidth={2.5} color="var(--accent-blue)" />,
+    props: { type: "arrow", color: "blue", size: "m", dash: "draw", arrowheadEnd: "arrow" }
+  },
+  {
+    id: "vox-bracket",
+    label: "Bracket",
+    icon: <Parentheses size={16} strokeWidth={2.5} color="var(--text-primary)" />,
+    props: { type: "text", text: "{", font: "serif", size: "xl", color: "black" } // Faking a giant bracket with text
+  }
+];
+
 export default function ToolRail({ editor }: ToolRailProps) {
   const [activeTool, setActiveTool] = useState<string>("select");
   const [showShapes, setShowShapes] = useState(false);
+  const [showVox, setShowVox] = useState(false);
   const [activeGeoShape, setActiveGeoShape] = useState("rectangle");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -125,6 +151,7 @@ export default function ToolRail({ editor }: ToolRailProps) {
   const selectTool = (toolId: ToolId) => {
     if (!editor) return;
     setShowShapes(false);
+    setShowVox(false);
     editor.setCurrentTool(toolId);
   };
 
@@ -132,6 +159,7 @@ export default function ToolRail({ editor }: ToolRailProps) {
     if (!editor) return;
     setActiveGeoShape(geoType);
     setShowShapes(false);
+    setShowVox(false);
 
     // Use dynamic import to avoid SSR issues with tldraw style imports
     import("@tldraw/tldraw").then(({ GeoShapeGeoStyle }) => {
@@ -140,6 +168,62 @@ export default function ToolRail({ editor }: ToolRailProps) {
         editor.setCurrentTool("geo");
       });
     });
+  };
+
+  const spawnVoxShape = async (shapeDef: any) => {
+    if (!editor) return;
+    setShowVox(false);
+    const { createShapeId } = await import("@tldraw/tldraw");
+    const shapeId = createShapeId();
+    const vp = editor.getViewportPageBounds();
+
+    if (shapeDef.props.type === "arrow") {
+      editor.createShapes([{
+        id: shapeId,
+        type: "arrow",
+        x: vp.x + vp.w / 2,
+        y: vp.y + vp.h / 2,
+        props: {
+          start: { x: 0, y: 0 },
+          end: { x: 100, y: 100 },
+          color: shapeDef.props.color,
+          dash: shapeDef.props.dash,
+          size: shapeDef.props.size,
+          arrowheadEnd: shapeDef.props.arrowheadEnd
+        }
+      }]);
+    } else if (shapeDef.props.type === "text") {
+      editor.createShapes([{
+        id: shapeId,
+        type: "text",
+        x: vp.x + vp.w / 2,
+        y: vp.y + vp.h / 2,
+        props: {
+          text: shapeDef.props.text,
+          font: shapeDef.props.font,
+          color: shapeDef.props.color,
+          size: "xl" // Massive
+        }
+      }]);
+    } else {
+      editor.createShapes([{
+        id: shapeId,
+        type: "geo",
+        x: vp.x + vp.w / 2,
+        y: vp.y + vp.h / 2,
+        props: {
+          geo: shapeDef.props.geo,
+          color: shapeDef.props.color,
+          fill: shapeDef.props.fill,
+          w: 100,
+          h: 100,
+          dash: shapeDef.props.dash
+        }
+      }]);
+    }
+
+    editor.select(shapeId);
+    editor.setCurrentTool("select");
   };
 
   const handleImageUpload = () => {
@@ -240,9 +324,8 @@ export default function ToolRail({ editor }: ToolRailProps) {
         <div style={{ position: "relative" }}>
           <button
             onClick={() => setShowShapes((v) => !v)}
-            className={`btn-icon ${
-              activeTool === "geo" ? "active" : ""
-            }`}
+            className={`btn-icon ${activeTool === "geo" ? "active" : ""
+              }`}
             title="Shapes"
             style={{ position: "relative" }}
           >
@@ -291,11 +374,72 @@ export default function ToolRail({ editor }: ToolRailProps) {
                   <button
                     key={shape.id}
                     onClick={() => selectGeoShape(shape.id)}
-                    className={`btn-icon ${
-                      activeGeoShape === shape.id && activeTool === "geo"
-                        ? "active"
-                        : ""
-                    }`}
+                    className={`btn-icon ${activeGeoShape === shape.id && activeTool === "geo"
+                      ? "active"
+                      : ""
+                      }`}
+                    title={shape.label}
+                    style={{ width: 32, height: 32 }}
+                  >
+                    {shape.icon}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Separator */}
+        <div
+          style={{
+            width: 24,
+            height: 1,
+            background: "var(--border)",
+            margin: "3px 0",
+          }}
+        />
+
+        {/* Vox Stickers */}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => {
+              setShowVox((v) => !v);
+              setShowShapes(false);
+            }}
+            className={`btn-icon ${showVox ? "active" : ""}`}
+            title="Editorial Shapes"
+          >
+            <Pencil size={18} strokeWidth={1.75} />
+          </button>
+
+          {showVox && (
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 399 }}
+                onClick={() => setShowVox(false)}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  left: "calc(100% + 8px)",
+                  top: 0,
+                  zIndex: 450,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  padding: 6,
+                  boxShadow: "var(--shadow-float)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                  animation: "scaleIn 150ms ease",
+                }}
+              >
+                {voxShapes.map((shape) => (
+                  <button
+                    key={shape.id}
+                    onClick={() => spawnVoxShape(shape)}
+                    className="btn-icon"
                     title={shape.label}
                     style={{ width: 32, height: 32 }}
                   >

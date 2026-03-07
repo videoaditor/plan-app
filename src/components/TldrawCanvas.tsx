@@ -241,7 +241,9 @@ function CanvasUI({
       )}
       <ProcessingOverlay editor={editor} />
       <ShapeAnimations editor={editor} />
+      <EntranceAnimations editor={editor} />
       <PresentationMode editor={editor} />
+      <DepthParallax editor={editor} />
     </>
   );
 }
@@ -336,4 +338,94 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
       )}
     </CanvasPanelContext.Provider>
   );
+}
+
+// ─── Auto-Parallax Depth ──────────────────────────────────────────────
+function DepthParallax({ editor }: { editor: Editor }) {
+  useEffect(() => {
+    let ticking = false;
+    const applyParallax = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const camera = editor.getCamera();
+        const shapes = editor.getCurrentPageShapeIds();
+
+        shapes.forEach((id: any) => {
+          const shape = editor.getShape(id);
+          if (!shape) return;
+
+          if (shape.type !== "image" && shape.type !== "text") return;
+
+          const el = document.querySelector(`[data-shape-id="${id}"]`) as HTMLElement;
+          if (!el) return;
+
+          const bounds = editor.getShapePageBounds(id);
+          if (!bounds) return;
+
+          // Factor represents z-depth: closer objects move more.
+          // Images have slight parallax; thick highlight headers do too.
+          const sizeFactor = Math.min((bounds.w * bounds.h) / 500000, 0.15);
+          const isBlackText = shape.type === "text" && (shape.props as any).color === "black";
+          const depth = isBlackText ? -0.05 : sizeFactor;
+
+          const px = -(camera.x * depth);
+          const py = -(camera.y * depth);
+
+          // Apply hardware accelerated transform on top of whatever Tldraw is doing
+          el.style.transform = `translate3d(${px}px, ${py}px, 0)`;
+        });
+        ticking = false;
+      });
+    };
+
+    const unsub = editor.store.listen(applyParallax, { scope: "session" });
+    return () => unsub();
+  }, [editor]);
+
+  return null;
+}
+
+// ─── Viewport Entrance Animations ─────────────────────────────────────
+function EntranceAnimations({ editor }: { editor: Editor }) {
+  const seenShapes = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    let ticking = false;
+    const checkViewport = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const vp = editor.getViewportPageBounds();
+        const shapes = editor.getCurrentPageShapeIds();
+
+        shapes.forEach((id: any) => {
+          if (seenShapes.current.has(id)) return; // Already animated in
+
+          const bounds = editor.getShapePageBounds(id);
+          if (!bounds) return;
+
+          // If bounds intersect viewport
+          if (
+            bounds.maxX > vp.minX &&
+            bounds.minX < vp.maxX &&
+            bounds.maxY > vp.minY &&
+            bounds.minY < vp.maxY
+          ) {
+            seenShapes.current.add(id);
+            const el = document.querySelector(`[data-shape-id="${id}"]`) as HTMLElement;
+            if (el) {
+              el.style.animation = "entranceScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards";
+            }
+          }
+        });
+        ticking = false;
+      });
+    };
+
+    const unsub = editor.store.listen(checkViewport, { scope: "session" });
+    return () => unsub();
+  }, [editor]);
+
+  return null;
 }

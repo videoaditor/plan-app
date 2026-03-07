@@ -927,3 +927,35 @@ body.is-presenting .animation-trigger {
 .tl-grid {
   display: none !important;
 }
+
+/* ─── ENTRANCE ANIMATIONS (Documentary Scrolling) ────────────────────────── */
+@keyframes entranceScale {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ─── VOX CONNECTORS: Animated Dashed Lines ────────────────────────── */
+@keyframes dash-flow {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Target dashed arrow and line strokes inside tldraw */
+.tl-arrow-hint[stroke-dasharray],
+.tl-stroke-hitarea+path[stroke-dasharray],
+path.tl-stroke-draw[stroke-dasharray],
+path.tl-stroke-solid[stroke-dasharray] {
+  animation: dash-flow 2s linear infinite;
+}

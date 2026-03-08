@@ -3,6 +3,7 @@
 import {
   Tldraw,
   useEditor,
+  createShapeId,
   type Editor,
   type TLComponents,
   DefaultContextMenu,
@@ -76,53 +77,54 @@ function AIContextMenu() {
           id="vox-headline"
           label="Add Vox Headline"
           icon="text"
-          onSelect={async () => {
-            if (!editor) return;
-            const { createShapeId } = await import("@tldraw/tldraw");
-            const vp = editor.getViewportPageBounds();
-            const shapeId = createShapeId();
-
-            editor.createShapes([{
-              id: shapeId,
-              type: "text",
-              x: vp.x + vp.w / 2 - 150,
-              y: vp.y + vp.h / 2 - 50,
-              props: {
-                text: "BREAKING NEWS",
-                font: "serif",
-                size: "xl",
-                align: "middle",
-                color: "black",
-              },
-            }]);
-            editor.select(shapeId);
+          onSelect={() => {
+            try {
+              const vp = editor.getViewportPageBounds();
+              const id = createShapeId();
+              editor.createShape({
+                id,
+                type: "text",
+                x: vp.x + vp.w / 2 - 150,
+                y: vp.y + vp.h / 2 - 50,
+                props: {
+                  text: "BREAKING NEWS",
+                  font: "serif",
+                  size: "xl",
+                  align: "middle",
+                  color: "black",
+                },
+              });
+              editor.select(id);
+            } catch (e) {
+              console.error("Failed to create headline:", e);
+            }
           }}
         />
         <TldrawUiMenuItem
           id="vox-highlight"
           label="Add Yellow Highlight"
           icon="blob"
-          onSelect={async () => {
-            if (!editor) return;
-            const { createShapeId } = await import("@tldraw/tldraw");
-            const vp = editor.getViewportPageBounds();
-            const shapeId = createShapeId();
-
-            editor.createShapes([{
-              id: shapeId,
-              type: "geo",
-              x: vp.x + vp.w / 2 - 100,
-              y: vp.y + vp.h / 2 - 20,
-              props: {
-                geo: "rectangle",
-                w: 200,
-                h: 40,
-                color: "yellow",
-                fill: "solid",
-              },
-            }]);
-            editor.sendToBack([shapeId]);
-            editor.select(shapeId);
+          onSelect={() => {
+            try {
+              const vp = editor.getViewportPageBounds();
+              const id = createShapeId();
+              editor.createShape({
+                id,
+                type: "geo",
+                x: vp.x + vp.w / 2 - 100,
+                y: vp.y + vp.h / 2 - 20,
+                props: {
+                  geo: "rectangle",
+                  w: 200,
+                  h: 40,
+                  color: "yellow",
+                  fill: "solid",
+                },
+              });
+              editor.select(id);
+            } catch (e) {
+              console.error("Failed to create highlight:", e);
+            }
           }}
         />
       </TldrawUiMenuGroup>
@@ -153,15 +155,18 @@ function CanvasUI({
     onMount(editor);
   }, [editor, onMount]);
 
-  // Sync zoom level to CSS variable so canvas texture scales with camera
+  // Sync camera position + zoom to CSS variables so canvas texture tracks with content
   useEffect(() => {
-    const updateZoom = () => {
+    const updateCamera = () => {
       const camera = editor.getCamera();
       const zoom = camera.z;
-      document.documentElement.style.setProperty("--canvas-zoom", String(zoom));
+      const root = document.documentElement;
+      root.style.setProperty("--canvas-zoom", String(zoom));
+      root.style.setProperty("--canvas-x", `${camera.x * zoom}px`);
+      root.style.setProperty("--canvas-y", `${camera.y * zoom}px`);
     };
-    updateZoom();
-    const unsub = editor.store.listen(updateZoom, { scope: "session" });
+    updateCamera();
+    const unsub = editor.store.listen(updateCamera, { scope: "session" });
     return () => unsub();
   }, [editor]);
 

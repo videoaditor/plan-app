@@ -249,6 +249,7 @@ function CanvasUI({
       <EntranceAnimations editor={editor} />
       <PresentationMode editor={editor} />
       <DepthParallax editor={editor} />
+      <ShapeIdTagger editor={editor} />
     </>
   );
 }
@@ -284,6 +285,73 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
 
   const handleMount = useCallback((e: Editor) => {
     setEditor(e);
+
+    // Auto-compress large pasted/dropped images
+    e.registerExternalAssetHandler("file", async ({ file }) => {
+      const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1MB threshold
+      const MAX_DIMENSION = 2048;
+
+      let src: string;
+      let w: number;
+      let h: number;
+
+      if (file.type.startsWith("image/") && file.size > MAX_SIZE_BYTES) {
+        // Compress: load into canvas, resize, export as JPEG
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+        w = Math.round(bitmap.width * scale);
+        h = Math.round(bitmap.height * scale);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(bitmap, 0, 0, w, h);
+        bitmap.close();
+
+        src = canvas.toDataURL("image/jpeg", 0.85);
+      } else if (file.type.startsWith("image/")) {
+        // Small image: just read as data URL without compressing
+        const bitmap = await createImageBitmap(file);
+        w = bitmap.width;
+        h = bitmap.height;
+        bitmap.close();
+        src = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      } else {
+        // Not an image (video, etc.) — pass through
+        src = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        w = 300;
+        h = 300;
+      }
+
+      const { AssetRecordType } = await import("@tldraw/tldraw");
+      const assetId = AssetRecordType.createId();
+
+      return {
+        id: assetId,
+        type: "image" as const,
+        typeName: "asset" as const,
+        props: {
+          name: file.name || "image.png",
+          src,
+          w,
+          h,
+          mimeType: file.type || "image/png",
+          isAnimated: false,
+        },
+        meta: {},
+      };
+    });
   }, []);
 
   const tldrawComponents: TLComponents = {
@@ -430,6 +498,57 @@ function EntranceAnimations({ editor }: { editor: Editor }) {
 
     const unsub = editor.store.listen(checkViewport, { scope: "session" });
     return () => unsub();
+  }, [editor]);
+
+  return null;
+}
+
+// ─── Shape ID Tagger ──────────────────────────────────────────────────
+// tldraw v2 does NOT add data-shape-id to shape DOM elements.
+// This component tags them so animations/parallax can querySelector
+// by shape ID.
+function ShapeIdTagger({ editor }: { editor: Editor }) {
+  useEffect(() => {
+    const tagShapes = () => {
+      const shapes = editor.getCurrentPageShapes();
+      // Each tldraw shape container is a .tl-shape div positioned via transform matrix.
+      // We match them by comparing the transform the editor computes.
+      for (const shape of shapes) {
+        // Check if already tagged
+        const existing = document.querySelector(`[data-shape-id="${shape.id}"]`);
+        if (existing) continue;
+
+        // Get the transform matrix tldraw uses for this shape
+        const pageTransform = editor.getShapePageTransform(shape.id);
+        if (!pageTransform) continue;
+
+        // tldraw sets the CSS transform to this matrix
+        const a = pageTransform.a.toFixed(4);
+        const b = pageTransform.b.toFixed(4);
+        const c = pageTransform.c.toFixed(4);
+        const d = pageTransform.d.toFixed(4);
+        const e = pageTransform.e.toFixed(4);
+        const f = pageTransform.f.toFixed(4);
+        const cssTransform = `matrix(${a}, ${b}, ${c}, ${d}, ${e}, ${f})`;
+
+        // Find the matching .tl-shape element
+        const allShapeEls = Array.from(document.querySelectorAll('.tl-shape:not(.tl-shape-background)'));
+        for (const el of allShapeEls) {
+          if ((el as HTMLElement).dataset.shapeId) continue; // already tagged
+          const elTransform = (el as HTMLElement).style.transform;
+          if (elTransform === cssTransform) {
+            (el as HTMLElement).dataset.shapeId = shape.id;
+            break;
+          }
+        }
+      }
+    };
+
+    tagShapes();
+    const unsub = editor.store.listen(tagShapes, { scope: "document" });
+    // Also re-tag on camera movements since DOM refreshes
+    const unsub2 = editor.store.listen(tagShapes, { scope: "session" });
+    return () => { unsub(); unsub2(); };
   }, [editor]);
 
   return null;

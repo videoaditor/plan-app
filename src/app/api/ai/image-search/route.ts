@@ -35,7 +35,9 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await upstream.json();
-    return NextResponse.json(data);
+    // Upstream wraps results: { images: [...] } — unwrap for client
+    const images = Array.isArray(data) ? data : (data.images || data.results || []);
+    return NextResponse.json(images);
   } catch (err) {
     console.error("image-search error:", err);
     return NextResponse.json(

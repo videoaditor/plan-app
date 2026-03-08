@@ -7,7 +7,7 @@ const GEN_API_BASE = "https://gen.aditor.ai/api";
 const GEMINI_MODEL = "gemini-2.5-flash-image";
 
 function getGeminiUrl() {
-  const key = process.env.GOOGLE_API_KEY || "AIzaSyDEJ2JMkVzDaMJJaOvFpZLHjpiB0-HYl-0";
+  const key = process.env.GOOGLE_API_KEY || "AIzaSyAnCURUbzORwHJm_vSiv4sRuHEtwdyd1hU";
   return `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
 }
 

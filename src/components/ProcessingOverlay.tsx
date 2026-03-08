@@ -6,6 +6,7 @@ import type { Editor } from "@tldraw/tldraw";
 interface ProcessingShape {
   id: string;
   bounds: { x: number; y: number; w: number; h: number };
+  error?: string;
 }
 
 interface ProcessingOverlayProps {
@@ -22,7 +23,7 @@ export default function ProcessingOverlay({ editor }: ProcessingOverlayProps) {
 
       for (const shape of shapes) {
         const meta = shape.meta as any;
-        if (meta?.processing) {
+        if (meta?.processing || meta?.processingError) {
           const pageBounds = editor.getShapePageBounds(shape.id);
           if (pageBounds) {
             const screenTopLeft = editor.pageToScreen({ x: pageBounds.minX, y: pageBounds.minY });
@@ -35,6 +36,7 @@ export default function ProcessingOverlay({ editor }: ProcessingOverlayProps) {
                 w: screenBottomRight.x - screenTopLeft.x,
                 h: screenBottomRight.y - screenTopLeft.y,
               },
+              error: meta.processingError,
             });
           }
         }
@@ -77,29 +79,54 @@ export default function ProcessingOverlay({ editor }: ProcessingOverlayProps) {
             animation: "entranceScale 0.3s ease-out forwards",
           }}
         >
-          {/* Rabbit & Hat Animation */}
-          <div className="rabbit-hat-stage">
-            <div className="hat hat-left">🎩</div>
-            <div className="rabbit-runner">🐇</div>
-            <div className="hat hat-right">🎩</div>
-          </div>
+          {ps.error ? (
+            <>
+              <div style={{ fontSize: 28 }}>⚠️</div>
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 11,
+                  letterSpacing: "0.05em",
+                  opacity: 0.9,
+                  background: "rgba(200,30,30,0.6)",
+                  padding: "4px 12px",
+                  borderRadius: 99,
+                  border: "1px solid rgba(255,100,100,0.3)",
+                  maxWidth: "90%",
+                  textAlign: "center",
+                  wordBreak: "break-word",
+                }}
+              >
+                {ps.error}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Rabbit & Hat Animation */}
+              <div className="rabbit-hat-stage">
+                <div className="hat hat-left">🎩</div>
+                <div className="rabbit-runner">🐇</div>
+                <div className="hat hat-right">🎩</div>
+              </div>
 
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              opacity: 0.8,
-              background: "rgba(0,0,0,0.4)",
-              padding: "4px 12px",
-              borderRadius: 99,
-              border: "1px solid rgba(255,255,255,0.1)",
-              marginTop: 8,
-            }}
-          >
-            Processing...
-          </div>
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 11,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  opacity: 0.8,
+                  background: "rgba(0,0,0,0.4)",
+                  padding: "4px 12px",
+                  borderRadius: 99,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  marginTop: 8,
+                }}
+              >
+                Processing...
+              </div>
+            </>
+          )}
         </div>
       ))}
     </>

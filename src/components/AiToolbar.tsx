@@ -64,9 +64,9 @@ async function runRemoveBg(
         },
       },
     ]);
-  } catch (err) {
+  } catch (err: any) {
     console.error("Remove BG failed:", err);
-    // Clear processing state on error
+    // Show error briefly, then clear
     try {
       editor.updateShapes([
         {
@@ -75,9 +75,19 @@ async function runRemoveBg(
           meta: {
             ...(editor.getShape(shapeId as any)?.meta || {}),
             processing: false,
+            processingError: err?.message || "Remove BG failed",
           },
         },
       ]);
+      setTimeout(() => {
+        try {
+          editor.updateShapes([{
+            id: shapeId as any,
+            type: "image",
+            meta: { ...(editor.getShape(shapeId as any)?.meta || {}), processingError: undefined },
+          }]);
+        } catch { }
+      }, 4000);
     } catch { }
   }
 }
@@ -157,7 +167,7 @@ async function runAiEdit(
 
     // Select the new shape
     editor.select(newShapeId);
-  } catch (err) {
+  } catch (err: any) {
     console.error("AI Edit failed:", err);
     try {
       editor.updateShapes([
@@ -167,9 +177,19 @@ async function runAiEdit(
           meta: {
             ...(editor.getShape(shapeId as any)?.meta || {}),
             processing: false,
+            processingError: err?.message || "AI Edit failed",
           },
         },
       ]);
+      setTimeout(() => {
+        try {
+          editor.updateShapes([{
+            id: shapeId as any,
+            type: "image",
+            meta: { ...(editor.getShape(shapeId as any)?.meta || {}), processingError: undefined },
+          }]);
+        } catch { }
+      }, 4000);
     } catch { }
   }
 }

@@ -97,7 +97,18 @@ async function runAiEdit(
     });
     if (!result.imageUrl) throw new Error("No result URL");
 
-    const { AssetRecordType } = await import("@tldraw/tldraw");
+    const { AssetRecordType, createShapeId } = await import("@tldraw/tldraw");
+
+    // Get original shape bounds for adjacent placement
+    const origShape = editor.getShape(shapeId as any);
+    const origX = origShape?.x ?? 0;
+    const origY = origShape?.y ?? 0;
+    const origW = (origShape?.props as any)?.w || assetW;
+
+    const newW = result.width || assetW;
+    const newH = result.height || assetH;
+
+    // Create new asset
     const newAssetId = AssetRecordType.createId();
     editor.createAssets([
       {
@@ -107,22 +118,32 @@ async function runAiEdit(
         props: {
           name: "ai-edit.png",
           src: result.imageUrl,
-          w: result.width || assetW,
-          h: result.height || assetH,
+          w: newW,
+          h: newH,
           mimeType: "image/png",
           isAnimated: false,
         },
         meta: {},
       },
     ]);
-    editor.updateShapes([
+
+    // Spawn new shape adjacent to original (20px gap to the right)
+    const newShapeId = createShapeId();
+    editor.createShapes([
       {
-        id: shapeId as any,
+        id: newShapeId,
         type: "image",
-        props: { assetId: newAssetId },
+        x: origX + origW + 20,
+        y: origY,
+        props: {
+          assetId: newAssetId,
+          w: newW,
+          h: newH,
+        },
       },
     ]);
 
+    // Clear processing state on original shape (keep it untouched)
     editor.updateShapes([
       {
         id: shapeId as any,
@@ -133,6 +154,9 @@ async function runAiEdit(
         },
       },
     ]);
+
+    // Select the new shape
+    editor.select(newShapeId);
   } catch (err) {
     console.error("AI Edit failed:", err);
     try {

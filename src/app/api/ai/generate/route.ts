@@ -4,9 +4,88 @@ export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
 const GEN_API_BASE = "https://gen.aditor.ai/api";
+const GEMINI_MODEL = "gemini-2.0-flash-preview-image-generation";
+
+function getGeminiUrl() {
+  const key = process.env.GOOGLE_API_KEY || "AIzaSyDEJ2JMkVzDaMJJaOvFpZLHjpiB0-HYl-0";
+  return `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+}
+
+// Convert a reference image (URL or data URI) to base64 + mime type
+async function toBase64Image(ref: string): Promise<{ base64: string; mimeType: string }> {
+  if (ref.startsWith("data:")) {
+    const match = ref.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) throw new Error("Invalid data URI");
+    return { mimeType: match[1], base64: match[2] };
+  }
+  // Fetch from URL
+  const res = await fetch(ref);
+  if (!res.ok) throw new Error(`Failed to fetch reference image: ${res.status}`);
+  const contentType = res.headers.get("content-type") || "image/jpeg";
+  const mimeType = contentType.split(";")[0];
+  const arrayBuffer = await res.arrayBuffer();
+  const base64 = Buffer.from(arrayBuffer).toString("base64");
+  return { base64, mimeType };
+}
+
+// Edit an image using Gemini 2.0 Flash Image Generation
+async function editWithGemini(
+  prompt: string,
+  referenceImageUrl: string
+): Promise<{ imageUrl: string; width: number; height: number }> {
+  const { base64, mimeType } = await toBase64Image(referenceImageUrl);
+
+  const payload = {
+    contents: [
+      {
+        parts: [
+          {
+            text: `You are an image editing assistant. Apply the user's requested changes to the provided image. Maintain the original composition and aspect ratio as much as possible.\n\nEdit instruction: ${prompt}`,
+          },
+          {
+            inline_data: {
+              mime_type: mimeType,
+              data: base64,
+            },
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      responseModalities: ["TEXT", "IMAGE"],
+    },
+  };
+
+  const res = await fetch(getGeminiUrl(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("[generate/gemini] error:", res.status, errorText);
+    throw new Error(`Gemini edit failed (${res.status}): ${errorText}`);
+  }
+
+  const data = await res.json();
+  const parts: any[] = data?.candidates?.[0]?.content?.parts || [];
+  const imagePart = parts.find((p) => p.inlineData);
+
+  if (!imagePart) {
+    console.error("[generate/gemini] no image in response:", JSON.stringify(data).slice(0, 300));
+    throw new Error("No image returned by Gemini");
+  }
+
+  const { mimeType: outMime, data: outBase64 } = imagePart.inlineData;
+  return {
+    imageUrl: `data:${outMime};base64,${outBase64}`,
+    width: 1024,
+    height: 1024,
+  };
+}
 
 // Upload base64 data URI to gen.aditor.ai, get back a local path
-// Returns /uploads/temp/... path that the backend can read directly
 async function uploadToTemp(dataUri: string): Promise<{ url: string; localPath: string }> {
   const res = await fetch(`${GEN_API_BASE}/upload-temp`, {
     method: "POST",
@@ -17,7 +96,6 @@ async function uploadToTemp(dataUri: string): Promise<{ url: string; localPath: 
     throw new Error(`Upload failed: ${await res.text()}`);
   }
   const data = await res.json();
-  // Extract local path from URL: https://gen.aditor.ai/uploads/temp/xxx.jpg → /uploads/temp/xxx.jpg
   const localPath = new URL(data.url).pathname;
   return { url: data.url, localPath };
 }
@@ -31,34 +109,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "prompt is required" }, { status: 400 });
     }
 
-    // If reference image is a data URI, upload it first
-    // Send as local path so backend reads directly (no circular HTTP)
-    const references: string[] = [];
+    // Edit mode — use Gemini directly
     if (referenceImageUrl) {
-      if (referenceImageUrl.startsWith("data:image")) {
-        try {
-          const { localPath } = await uploadToTemp(referenceImageUrl);
-          references.push(localPath); // /uploads/temp/xxx.jpg — read locally by backend
-        } catch (err: any) {
-          console.error("[generate] upload-temp failed:", err.message);
-        }
-      } else {
-        references.push(referenceImageUrl);
+      try {
+        const result = await editWithGemini(prompt, referenceImageUrl);
+        return NextResponse.json(result);
+      } catch (err: any) {
+        console.error("[generate/gemini] failed:", err.message);
+        return NextResponse.json(
+          { error: err.message || "Gemini edit failed" },
+          { status: 500 }
+        );
       }
     }
 
-    // When editing, make the prompt clearer for the model
-    const editPrompt = referenceImageUrl
-      ? `Edit this image: ${prompt}`
-      : prompt;
-
+    // Generation mode — proxy to gen.aditor.ai (unchanged)
     const upstream = await fetch(`${GEN_API_BASE}/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        prompt: editPrompt,
-        references: references.length > 0 ? references : undefined,
-        image_url: references.length > 0 ? references[0] : undefined,
+        prompt,
         ratio: aspectRatio ?? "1:1",
         model: model ?? "nano-banana-pro",
       }),

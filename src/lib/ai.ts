@@ -72,8 +72,9 @@ export async function generateImage(options: GenerateOptions): Promise<GenerateR
     }),
   });
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Generate failed: ${err}`);
+    let msg = "Generation failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch { msg = await res.text(); }
+    throw new Error(msg);
   }
   return res.json();
 }
@@ -88,8 +89,9 @@ export async function removeBackground(imageUrl: string): Promise<RemoveBgResult
     body: JSON.stringify({ imageUrl: transferableUrl }),
   });
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Remove BG failed: ${err}`);
+    let msg = "Background removal failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch { msg = await res.text(); }
+    throw new Error(msg);
   }
   return res.json();
 }
@@ -109,8 +111,9 @@ export async function animateImage(imageUrl: string, prompt?: string): Promise<A
     body: JSON.stringify({ imageUrl: transferableUrl, prompt }),
   });
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Animate failed: ${err}`);
+    let msg = "Animation failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch { msg = await res.text(); }
+    throw new Error(msg);
   }
   return res.json();
 }
@@ -119,8 +122,9 @@ export async function searchImages(query: string, page = 1): Promise<ImageSearch
   const params = new URLSearchParams({ q: query, page: String(page) });
   const res = await fetch(`/api/ai/image-search?${params}`);
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Image search failed: ${err}`);
+    let msg = "Image search failed";
+    try { const j = await res.json(); msg = j.error || msg; } catch { msg = await res.text(); }
+    throw new Error(msg);
   }
   return res.json();
 }

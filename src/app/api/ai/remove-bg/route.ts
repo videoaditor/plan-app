@@ -46,11 +46,15 @@ export async function POST(req: NextRequest) {
       if (upstream.status === 402) {
         return NextResponse.json({ error: "Remove BG credits exhausted" }, { status: 402 });
       }
-      if (upstream.status === 400) {
-        return NextResponse.json({ error: "Invalid image for background removal" }, { status: 400 });
-      }
+
+      // Parse actual remove.bg error for a better message
+      let detail = "Image could not be processed";
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed.errors?.[0]?.title) detail = parsed.errors[0].title;
+      } catch { }
       return NextResponse.json(
-        { error: `Background removal failed: ${errorText}` },
+        { error: detail },
         { status: upstream.status }
       );
     }

@@ -56,16 +56,32 @@ async function editWithGemini(
     },
   };
 
-  const res = await fetch(getGeminiUrl(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  // 60s timeout to prevent silent hangs
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+
+  let res: Response;
+  try {
+    res = await fetch(getGeminiUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } catch (fetchErr: any) {
+    clearTimeout(timeout);
+    const isTimeout = fetchErr?.name === "AbortError";
+    throw new Error(isTimeout ? "Gemini request timed out (60s)" : `Could not reach Gemini API: ${fetchErr.message}`);
+  }
+  clearTimeout(timeout);
 
   if (!res.ok) {
     const errorText = await res.text();
     console.error("[generate/gemini] error:", res.status, errorText);
-    throw new Error(`Gemini edit failed (${res.status}): ${errorText}`);
+    // Extract useful error message
+    let detail = `Gemini error (${res.status})`;
+    try { const j = JSON.parse(errorText); detail = j.error?.message || detail; } catch { }
+    throw new Error(detail);
   }
 
   const data = await res.json();

@@ -43,8 +43,8 @@ async function editWithGemini(
             text: `You are an image editing assistant. Apply the user's requested changes to the provided image. Maintain the original composition and aspect ratio as much as possible.\n\nEdit instruction: ${prompt}`,
           },
           {
-            inline_data: {
-              mime_type: mimeType,
+            inlineData: {
+              mimeType,
               data: base64,
             },
           },
@@ -55,6 +55,8 @@ async function editWithGemini(
       responseModalities: ["TEXT", "IMAGE"],
     },
   };
+
+  console.log(`[generate/gemini] Payload size configured: ${Math.round(JSON.stringify(payload).length / 1024)} KB`);
 
   // 60s timeout to prevent silent hangs
   const controller = new AbortController();

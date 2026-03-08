@@ -4,7 +4,7 @@ export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
 const GEN_API_BASE = "https://gen.aditor.ai/api";
-const GEMINI_MODEL = "gemini-2.0-flash-preview-image-generation";
+const GEMINI_MODEL = "gemini-2.5-flash-image";
 
 function getGeminiUrl() {
   const key = process.env.GOOGLE_API_KEY || "AIzaSyDEJ2JMkVzDaMJJaOvFpZLHjpiB0-HYl-0";
@@ -70,14 +70,17 @@ async function editWithGemini(
 
   const data = await res.json();
   const parts: any[] = data?.candidates?.[0]?.content?.parts || [];
-  const imagePart = parts.find((p) => p.inlineData);
+  // REST API returns snake_case (inline_data), SDK returns camelCase (inlineData)
+  const imagePart = parts.find((p) => p.inlineData || p.inline_data);
 
   if (!imagePart) {
-    console.error("[generate/gemini] no image in response:", JSON.stringify(data).slice(0, 300));
+    console.error("[generate/gemini] no image in response:", JSON.stringify(data).slice(0, 500));
     throw new Error("No image returned by Gemini");
   }
 
-  const { mimeType: outMime, data: outBase64 } = imagePart.inlineData;
+  const inlineData = imagePart.inlineData || imagePart.inline_data;
+  const outMime = inlineData.mimeType || inlineData.mime_type || "image/png";
+  const outBase64 = inlineData.data;
   return {
     imageUrl: `data:${outMime};base64,${outBase64}`,
     width: 1024,

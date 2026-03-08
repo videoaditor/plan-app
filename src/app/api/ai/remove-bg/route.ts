@@ -18,12 +18,15 @@ export async function POST(req: NextRequest) {
     form.append("size", "auto");
 
     if (imageUrl.startsWith("data:")) {
-      // Extract base64 from data URI (strip the "data:<mime>;base64," prefix)
-      const base64 = imageUrl.split(",")[1];
-      if (!base64) {
+      // Extract base64 from data URI and convert to Blob for multipart upload
+      const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (!match) {
         return NextResponse.json({ error: "Invalid data URI" }, { status: 400 });
       }
-      form.append("image_file_b64", base64);
+      const [, mime, base64] = match;
+      const buffer = Buffer.from(base64, "base64");
+      const blob = new Blob([buffer], { type: mime });
+      form.append("image_file", blob, "image.png");
     } else {
       form.append("image_url", imageUrl);
     }

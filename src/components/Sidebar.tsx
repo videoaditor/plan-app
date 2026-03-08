@@ -430,6 +430,20 @@ export default function Sidebar({
             <Layout size={12} strokeWidth={1.75} />
             <span>{boards.length} board{boards.length !== 1 ? "s" : ""}</span>
           </div>
+          <div
+            style={{
+              fontSize: 9,
+              color: "var(--text-muted)",
+              opacity: 0.5,
+              marginTop: 6,
+              fontFamily: "var(--font-mono, monospace)",
+              letterSpacing: "0.04em",
+              userSelect: "all",
+            }}
+            title="Build version"
+          >
+            v{process.env.NEXT_PUBLIC_APP_VERSION || "dev"} · {process.env.NEXT_PUBLIC_BUILD_DATE || "local"}
+          </div>
         </div>
       </div>
 

@@ -5,22 +5,20 @@ export const maxDuration = 120;
 
 export async function POST() {
   try {
-    // Run the deploy script on the server
-    const { exec } = require("child_process");
-    const result = await new Promise<string>((resolve, reject) => {
-      exec(
-        "/opt/plan-app-deploy/deploy.sh",
-        { timeout: 90000, cwd: "/opt/plan-app-deploy" },
-        (error: any, stdout: string, stderr: string) => {
-          if (error) {
-            reject(new Error(stderr || error.message));
-          } else {
-            resolve(stdout);
-          }
-        }
-      );
+    // Fire-and-forget: spawn detached so it survives PM2 restart
+    const { spawn } = require("child_process");
+    const child = spawn("/opt/plan-app-deploy/deploy.sh", [], {
+      cwd: "/opt/plan-app-deploy",
+      detached: true,
+      stdio: ["ignore", "ignore", "ignore"],
     });
-    return NextResponse.json({ success: true, output: result });
+    child.unref();
+
+    // Return immediately — deploy runs in background
+    return NextResponse.json({
+      success: true,
+      message: "Deploy started. App will restart in ~30s.",
+    });
   } catch (err: any) {
     return NextResponse.json(
       { success: false, error: err.message },

@@ -352,6 +352,44 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
         meta: {},
       };
     });
+
+    // Override paste/drop placement — center images in the current viewport
+    e.registerExternalContentHandler("files", async ({ files, point }) => {
+      const { AssetRecordType, createShapeId: makeId } = await import("@tldraw/tldraw");
+      const vp = e.getViewportPageBounds();
+      // Place at the given point (drop target) or viewport center (paste)
+      const cx = point?.x ?? vp.x + vp.w / 2;
+      const cy = point?.y ?? vp.y + vp.h / 2;
+
+      let offsetY = 0;
+      for (const file of files) {
+        if (!file.type.startsWith("image/")) continue;
+
+        // Get asset through the registered asset handler
+        const asset = await e.getAssetForExternalContent({ type: "file", file });
+        if (!asset) continue;
+
+        e.createAssets([asset]);
+
+        const aw = (asset.props as any).w || 512;
+        const ah = (asset.props as any).h || 512;
+        // Scale down for display — max 600px on screen
+        const maxDisplay = 600;
+        const scale = Math.min(1, maxDisplay / Math.max(aw, ah));
+        const displayW = Math.round(aw * scale);
+        const displayH = Math.round(ah * scale);
+
+        e.createShapes([{
+          id: makeId(),
+          type: "image",
+          x: cx - displayW / 2,
+          y: cy - displayH / 2 + offsetY,
+          props: { assetId: asset.id, w: displayW, h: displayH },
+        }]);
+
+        offsetY += displayH + 20; // Stack multiple pastes vertically
+      }
+    });
   }, []);
 
   const tldrawComponents: TLComponents = {

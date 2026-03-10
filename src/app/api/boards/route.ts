@@ -1,14 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
+import getDb from "@/lib/db";
 
-// Note: Board data is stored client-side in localStorage via @/lib/boards.ts
-// These API routes are stubs for future server-side storage migration.
-// Currently, the client handles all board CRUD.
+const BOARD_COLORS = [
+  "#F5D547", "#2563EB", "#EC4899", "#14B8A6",
+  "#EF4444", "#A78BFA", "#FB923C", "#34D399",
+];
+
+function generateId(): string {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
 
 export async function GET() {
-  return NextResponse.json(
-    { message: "Boards are managed client-side via localStorage" },
-    { status: 200 }
-  );
+  try {
+    const db = getDb();
+    const rows = db.prepare("SELECT * FROM boards ORDER BY created_at ASC").all() as any[];
+    return NextResponse.json(
+      rows.map((b) => ({
+        id: b.id,
+        name: b.name,
+        color: b.color,
+        createdAt: b.created_at,
+        updatedAt: b.updated_at,
+      }))
+    );
+  } catch (err) {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -20,16 +37,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "name is required" }, { status: 400 });
     }
 
-    // Future: create board in database
-    const board = {
-      id: Math.random().toString(36).slice(2) + Date.now().toString(36),
-      name,
-      color: color ?? "#F5D547",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
+    const db = getDb();
+    const countRow = db.prepare("SELECT COUNT(*) as count FROM boards").get() as any;
+    const boardColor = color ?? BOARD_COLORS[countRow.count % BOARD_COLORS.length];
 
-    return NextResponse.json(board, { status: 201 });
+    const id = generateId();
+    const now = Date.now();
+
+    db.prepare(
+      "INSERT INTO boards (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+    ).run(id, name, boardColor, now, now);
+
+    return NextResponse.json(
+      { id, name, color: boardColor, createdAt: now, updatedAt: now },
+      { status: 201 }
+    );
   } catch (err) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

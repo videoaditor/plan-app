@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@tldraw/tldraw": "^2.4.4",
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.6.2",
     "lucide-react": "^0.469.0",
     "next": "14.2.18",
     "react": "^18.3.1",

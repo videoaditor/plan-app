@@ -8,13 +8,15 @@ export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const boards = getBoards();
-    if (boards.length > 0) {
-      router.replace(`/board/${boards[0].id}`);
-    } else {
-      const board = createBoard("My First Board");
-      router.replace(`/board/${board.id}`);
-    }
+    (async () => {
+      const boards = await getBoards();
+      if (boards.length > 0) {
+        router.replace(`/board/${boards[0].id}`);
+      } else {
+        const board = await createBoard("My First Board");
+        router.replace(`/board/${board.id}`);
+      }
+    })();
   }, [router]);
 
   return (

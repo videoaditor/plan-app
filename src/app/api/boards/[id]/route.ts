@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// Note: Board data is stored client-side in localStorage.
-// These API routes are stubs for future server-side storage migration.
+import getDb from "@/lib/db";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  return NextResponse.json(
-    { message: `Board ${params.id} is managed client-side` },
-    { status: 200 }
-  );
+  try {
+    const db = getDb();
+    const board = db.prepare("SELECT * FROM boards WHERE id = ?").get(params.id) as any;
+    if (!board) {
+      return NextResponse.json({ error: "Board not found" }, { status: 404 });
+    }
+    return NextResponse.json({
+      id: board.id,
+      name: board.name,
+      color: board.color,
+      createdAt: board.created_at,
+      updatedAt: board.updated_at,
+    });
+  } catch (err) {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
 
 export async function PUT(
@@ -18,12 +28,30 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const db = getDb();
     const body = await req.json();
-    // Future: save tldraw snapshot to server
-    return NextResponse.json(
-      { id: params.id, ...body, updatedAt: Date.now() },
-      { status: 200 }
-    );
+    const { name, color } = body;
+
+    const board = db.prepare("SELECT * FROM boards WHERE id = ?").get(params.id) as any;
+    if (!board) {
+      return NextResponse.json({ error: "Board not found" }, { status: 404 });
+    }
+
+    const updatedName = name?.trim() || board.name;
+    const updatedColor = color ?? board.color;
+    const now = Date.now();
+
+    db.prepare(
+      "UPDATE boards SET name = ?, color = ?, updated_at = ? WHERE id = ?"
+    ).run(updatedName, updatedColor, now, params.id);
+
+    return NextResponse.json({
+      id: params.id,
+      name: updatedName,
+      color: updatedColor,
+      createdAt: board.created_at,
+      updatedAt: now,
+    });
   } catch (err) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -33,6 +61,11 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Future: delete board from server
-  return NextResponse.json({ id: params.id, deleted: true }, { status: 200 });
+  try {
+    const db = getDb();
+    db.prepare("DELETE FROM boards WHERE id = ?").run(params.id);
+    return NextResponse.json({ id: params.id, deleted: true });
+  } catch (err) {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

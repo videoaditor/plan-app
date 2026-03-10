@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getBoardById, getBoards, createBoard, type Board } from "@/lib/boards";
+import { getBoards, createBoard, type Board } from "@/lib/boards";
 import TopBar from "@/components/TopBar";
 import Sidebar from "@/components/Sidebar";
 import Canvas from "@/components/Canvas";
@@ -17,25 +17,26 @@ export default function BoardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    const allBoards = getBoards();
-    setBoards(allBoards);
+    (async () => {
+      const allBoards = await getBoards();
+      setBoards(allBoards);
 
-    const found = allBoards.find((b) => b.id === id);
-    if (found) {
-      setBoard(found);
-    } else if (allBoards.length > 0) {
-      router.replace(`/board/${allBoards[0].id}`);
-    } else {
-      // Create first board
-      const newBoard = createBoard("My First Board");
-      setBoards([newBoard]);
-      setBoard(newBoard);
-      router.replace(`/board/${newBoard.id}`);
-    }
+      const found = allBoards.find((b) => b.id === id);
+      if (found) {
+        setBoard(found);
+      } else if (allBoards.length > 0) {
+        router.replace(`/board/${allBoards[0].id}`);
+      } else {
+        const newBoard = await createBoard("My First Board");
+        setBoards([newBoard]);
+        setBoard(newBoard);
+        router.replace(`/board/${newBoard.id}`);
+      }
+    })();
   }, [id, router]);
 
-  const handleBoardsChange = () => {
-    const updated = getBoards();
+  const handleBoardsChange = async () => {
+    const updated = await getBoards();
     setBoards(updated);
     const current = updated.find((b) => b.id === id);
     if (current) {

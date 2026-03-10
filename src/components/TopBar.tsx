@@ -35,10 +35,10 @@ export default function TopBar({
     }
   }, [editing]);
 
-  const commitRename = () => {
+  const commitRename = async () => {
     const trimmed = name.trim();
     if (trimmed && trimmed !== board.name) {
-      renameBoard(board.id, trimmed);
+      await renameBoard(board.id, trimmed);
       onBoardChange();
     } else {
       setName(board.name);

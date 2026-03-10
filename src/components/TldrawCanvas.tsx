@@ -261,6 +261,7 @@ interface TldrawCanvasProps {
 
 export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
   const [editor, setEditor] = useState<Editor | null>(null);
+  const suppressSave = useRef(false);
 
   const [showGenerate, setShowGenerate] = useState(false);
   const [generateRef, setGenerateRef] = useState<{
@@ -268,6 +269,54 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
     shapeId?: string;
   } | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+
+  // Load snapshot from server on mount; save on document changes (debounced 2s)
+  useEffect(() => {
+    if (!editor) return;
+
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/boards/${boardId}/snapshot`);
+        if (res.ok) {
+          const snapshot = await res.json();
+          if (snapshot) {
+            suppressSave.current = true;
+            editor.store.loadStoreSnapshot(snapshot);
+            suppressSave.current = false;
+          }
+        }
+      } catch {
+        // No snapshot or network error — tldraw uses IndexedDB fallback via persistenceKey
+      }
+    })();
+
+    const unsub = editor.store.listen(
+      () => {
+        if (suppressSave.current) return;
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(async () => {
+          try {
+            const snapshot = editor.store.getStoreSnapshot();
+            await fetch(`/api/boards/${boardId}/snapshot`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(snapshot),
+            });
+          } catch {
+            // Silently ignore save errors
+          }
+        }, 2000);
+      },
+      { scope: "document" }
+    );
+
+    return () => {
+      unsub();
+      if (saveTimer) clearTimeout(saveTimer);
+    };
+  }, [editor, boardId]);
 
   const openGenerate = useCallback(
     (referenceImageSrc?: string, referenceShapeId?: string) => {

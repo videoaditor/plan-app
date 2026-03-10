@@ -14,6 +14,7 @@ const nextConfig = {
   },
   transpilePackages: ["@tldraw/tldraw", "@tldraw/assets", "@tldraw/editor", "@tldraw/store", "@tldraw/tlschema"],
   experimental: {
+    serverComponentsExternalPackages: ["better-sqlite3"],
     serverActions: {
       bodySizeLimit: "20mb",
     },

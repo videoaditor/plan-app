@@ -53,24 +53,24 @@ export default function Sidebar({
     setTimeout(() => editInputRef.current?.select(), 50);
   };
 
-  const commitEdit = () => {
+  const commitEdit = async () => {
     if (editingId && editName.trim()) {
-      renameBoard(editingId, editName.trim());
+      await renameBoard(editingId, editName.trim());
       onBoardsChange();
     }
     setEditingId(null);
   };
 
-  const handleDeleteBoard = (id: string) => {
+  const handleDeleteBoard = async (id: string) => {
     setMenuBoardId(null);
-    deleteBoard(id);
+    await deleteBoard(id);
     if (id === currentBoardId) {
       const remaining = boards.filter((b) => b.id !== id);
       if (remaining.length > 0) {
         router.push(`/board/${remaining[0].id}`);
       } else {
         // Create a new board if none left
-        const fresh = createBoard("My Board");
+        const fresh = await createBoard("My Board");
         router.push(`/board/${fresh.id}`);
       }
     }
@@ -83,9 +83,9 @@ export default function Sidebar({
     setTimeout(() => newInputRef.current?.focus(), 50);
   };
 
-  const commitCreate = () => {
+  const commitCreate = async () => {
     const name = newBoardName.trim() || "Untitled Board";
-    const board = createBoard(name);
+    const board = await createBoard(name);
     onBoardsChange();
     setCreating(false);
     router.push(`/board/${board.id}`);

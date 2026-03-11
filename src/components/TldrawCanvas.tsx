@@ -364,7 +364,26 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
             suppressSave.current = true;
             editor.store.loadStoreSnapshot(snapshot);
             suppressSave.current = false;
-            // Re-focus after snapshot load (loading can steal focus)
+
+            // CRITICAL: loadStoreSnapshot overwrites screenBounds from stored data
+            // which won't match the current container position. Fix it immediately.
+            const fixScreenBounds = () => {
+              const container = document.querySelector(".tl-container");
+              if (!container) return;
+              const rect = container.getBoundingClientRect();
+              if (rect.width > 0 && rect.height > 0) {
+                const current = editor.getViewportScreenBounds();
+                const BoxCls = current.constructor as any;
+                editor.updateViewportScreenBounds(new BoxCls(rect.x, rect.y, rect.width, rect.height));
+              }
+            };
+            fixScreenBounds();
+            requestAnimationFrame(fixScreenBounds);
+            setTimeout(fixScreenBounds, 50);
+            setTimeout(fixScreenBounds, 200);
+            setTimeout(fixScreenBounds, 500);
+
+            // Re-focus after snapshot load
             requestAnimationFrame(() => editor.focus());
             setTimeout(() => editor.focus(), 100);
           }

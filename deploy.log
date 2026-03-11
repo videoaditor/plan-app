@@ -1,0 +1,72 @@
+[2026-03-11T07:30:06+00:00] Starting deploy...
+From https://github.com/videoaditor/plan-app
+ * branch            main       -> FETCH_HEAD
+Already up to date.
+[32m[PM2] [39mApplying action stopProcessId on app [plan-app](ids: [ 5 ])
+[32m[PM2] [39m[plan-app](5) ✓
+┌────┬──────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name         │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼──────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ [1m[36m0[39m[22m  │ claw         │ default     │ 1.0.0   │ [7m[1mfork[22m[27m    │ 1149     │ 16D    │ 0    │ [32m[1monline[22m[39m    │ 0%       │ 74.1mb   │ [1mroot[22m     │ [90mdisabled[39m │
+│ [1m[36m6[39m[22m  │ gen          │ default     │ 1.0.0   │ [7m[1mfork[22m[27m    │ 3242747  │ 16m    │ 1    │ [32m[1monline[22m[39m    │ 0%       │ 94.4mb   │ [1mroot[22m     │ [90mdisabled[39m │
+│ [1m[36m5[39m[22m  │ plan-app     │ default     │ N/A     │ [7m[1mfork[22m[27m    │ 0        │ 0      │ 74   │ [31m[1mstopped[22m[39m   │ 0%       │ 0b       │ [1mroot[22m     │ [90mdisabled[39m │
+│ [1m[36m2[39m[22m  │ repurpose    │ default     │ N/A     │ [7m[1mfork[22m[27m    │ 371497   │ 10D    │ 1    │ [32m[1monline[22m[39m    │ 0%       │ 71.7mb   │ [1mroot[22m     │ [90mdisabled[39m │
+└────┴──────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+[2026-03-11T07:30:07+00:00] PM2 stopped
+npm warn using --force Recommended protections disabled.
+npm warn deprecated lodash.isequal@4.5.0: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
+npm warn deprecated prebuild-install@7.1.3: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
+npm warn deprecated next@14.2.18: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/security-update-2025-12-11 for more details.
+
+added 170 packages, and audited 171 packages in 1m
+
+15 packages are looking for funding
+  run `npm fund` for details
+
+7 vulnerabilities (6 moderate, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+[2026-03-11T07:31:30+00:00] Deps installed, building...
+
+> plan-app@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.18
+
+   Creating an optimized production build ...
+Failed to compile.
+
+./src/app/board/[id]/page.tsx
+Module not found: Can't resolve '@/lib/boards'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./src/app/board/[id]/page.tsx
+Module not found: Can't resolve '@/components/TopBar'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./src/app/board/[id]/page.tsx
+Module not found: Can't resolve '@/components/Sidebar'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./src/app/board/[id]/page.tsx
+Module not found: Can't resolve '@/components/Canvas'
+
+https://nextjs.org/docs/messages/module-not-found
+
+./src/app/page.tsx
+Module not found: Can't resolve '@/lib/boards'
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+> Build failed because of webpack errors
+[2026-03-11T07:31:35+00:00] Build failed

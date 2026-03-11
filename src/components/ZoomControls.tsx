@@ -26,10 +26,10 @@ export default function ZoomControls({ editor }: ZoomControlsProps) {
 
   if (!editor) return null;
 
-  const handleZoomIn = () => editor.zoomIn();
-  const handleZoomOut = () => editor.zoomOut();
-  const handleFit = () => editor.zoomToFit();
-  const handleReset = () => editor.resetZoom();
+  const handleZoomIn = () => { editor.zoomIn(); editor.focus(); };
+  const handleZoomOut = () => { editor.zoomOut(); editor.focus(); };
+  const handleFit = () => { editor.zoomToFit(); editor.focus(); };
+  const handleReset = () => { editor.resetZoom(); editor.focus(); };
 
   return (
     <div className="zoom-controls">

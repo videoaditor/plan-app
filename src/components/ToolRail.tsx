@@ -153,6 +153,7 @@ export default function ToolRail({ editor }: ToolRailProps) {
     setShowShapes(false);
     setShowVox(false);
     editor.setCurrentTool(toolId);
+    editor.focus();
   };
 
   const selectGeoShape = (geoType: string) => {

@@ -193,8 +193,22 @@ export default function TopBar({
               const res = await fetch("/api/deploy", { method: "POST" });
               const data = await res.json();
               if (data.success) {
-                // Reload after a short delay to pick up new build
-                setTimeout(() => window.location.reload(), 2000);
+                // Poll until server is back up (deploy takes ~45s)
+                const pollUntilReady = async () => {
+                  for (let i = 0; i < 30; i++) {
+                    await new Promise(r => setTimeout(r, 3000));
+                    try {
+                      const check = await fetch("/api/boards", { signal: AbortSignal.timeout(3000) });
+                      if (check.ok) {
+                        window.location.reload();
+                        return;
+                      }
+                    } catch {}
+                  }
+                  // Give up after 90s, try reload anyway
+                  window.location.reload();
+                };
+                pollUntilReady();
               } else {
                 console.error("Deploy failed:", data.error);
                 setDeploying(false);

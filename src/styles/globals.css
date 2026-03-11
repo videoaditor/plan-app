@@ -905,7 +905,7 @@ body.is-presenting .animation-trigger {
 .tl-background {
   background-color: var(--bg-default) !important;
   background-image: var(--canvas-pattern) !important;
-  background-position: var(--canvas-x, 0px) var(--canvas-y, 0px) !important;
+  /* background-position removed — tldraw handles canvas panning */
   background-size: calc(24px * var(--canvas-zoom, 1)) calc(24px * var(--canvas-zoom, 1)) !important;
 }
 

@@ -90,7 +90,6 @@ function AIContextMenu() {
                   text: "BREAKING NEWS",
                   font: "serif",
                   size: "xl",
-                  align: "middle",
                   color: "black",
                 },
               });
@@ -155,18 +154,14 @@ function CanvasUI({
     onMount(editor);
   }, [editor, onMount]);
 
-  // Sync camera position + zoom to CSS variables so canvas texture tracks with content
+  // Sync zoom level to CSS variable for background dot scaling
   useEffect(() => {
-    const updateCamera = () => {
+    const updateZoom = () => {
       const camera = editor.getCamera();
-      const zoom = camera.z;
-      const root = document.documentElement;
-      root.style.setProperty("--canvas-zoom", String(zoom));
-      root.style.setProperty("--canvas-x", `${camera.x * zoom}px`);
-      root.style.setProperty("--canvas-y", `${camera.y * zoom}px`);
+      document.documentElement.style.setProperty("--canvas-zoom", String(camera.z));
     };
-    updateCamera();
-    const unsub = editor.store.listen(updateCamera, { scope: "session" });
+    updateZoom();
+    const unsub = editor.store.listen(updateZoom, { scope: "session" });
     return () => unsub();
   }, [editor]);
 
@@ -221,6 +216,93 @@ function CanvasUI({
     return () => unsub();
   }, [editor, openGenerate, openSearch]);
 
+
+  // Keep tldraw focused — required for wheel/scroll/zoom/keyboard to work
+  useEffect(() => {
+    // Focus immediately and again after layout settles
+    editor.focus();
+    const t1 = setTimeout(() => editor.focus(), 50);
+    const t2 = setTimeout(() => editor.focus(), 200);
+    const t3 = setTimeout(() => editor.focus(), 500);
+
+    // Watch for container resize/reposition (sidebar toggle, window resize)
+    const container = document.querySelector(".tl-container");
+    let resizeObserver: ResizeObserver | null = null;
+    if (container) {
+      resizeObserver = new ResizeObserver(() => {
+        const rect = container.getBoundingClientRect();
+        const current = editor.getViewportScreenBounds();
+        const Box = current.constructor as any;
+        if (Math.abs(current.x - rect.x) > 1 || Math.abs(current.y - rect.y) > 1 ||
+            Math.abs(current.w - rect.width) > 1 || Math.abs(current.h - rect.height) > 1) {
+          editor.updateViewportScreenBounds(new Box(rect.x, rect.y, rect.width, rect.height));
+        }
+      });
+      resizeObserver.observe(container);
+    }
+
+    // Re-focus on any pointer interaction with the canvas
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest(".tl-canvas") || target.closest(".tldraw-canvas-wrapper")) {
+        requestAnimationFrame(() => {
+          if (!editor.getInstanceState().isFocused) {
+            editor.focus();
+          }
+        });
+      }
+    };
+
+    // Re-focus on wheel BEFORE tldraw tries to process it
+    // This uses capture phase so we focus first, then tldraw gets the event
+    const handleWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest(".tl-canvas") || target.closest(".tldraw-canvas-wrapper")) {
+        if (!editor.getInstanceState().isFocused) {
+          editor.focus();
+          // Re-dispatch the wheel event after focusing so tldraw picks it up
+          requestAnimationFrame(() => {
+            const clone = new WheelEvent("wheel", {
+              deltaX: e.deltaX,
+              deltaY: e.deltaY,
+              deltaMode: e.deltaMode,
+              clientX: e.clientX,
+              clientY: e.clientY,
+              ctrlKey: e.ctrlKey,
+              shiftKey: e.shiftKey,
+              altKey: e.altKey,
+              metaKey: e.metaKey,
+              bubbles: true,
+              cancelable: true,
+            });
+            (e.target as HTMLElement).dispatchEvent(clone);
+          });
+        }
+      }
+    };
+
+    // Re-focus when document focus returns to body (e.g. after clicking overlays)
+    const handleFocusIn = () => {
+      if (document.activeElement === document.body) {
+        editor.focus();
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown, { capture: true });
+    document.addEventListener("wheel", handleWheel, { capture: true });
+    document.addEventListener("focusin", handleFocusIn);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      resizeObserver?.disconnect();
+      document.removeEventListener("pointerdown", handlePointerDown, { capture: true } as any);
+      document.removeEventListener("wheel", handleWheel, { capture: true } as any);
+      document.removeEventListener("focusin", handleFocusIn);
+    };
+  }, [editor]);
+
   const handleAiEdit = useCallback(() => {
     if (aiReferenceImage) {
       openGenerate(aiReferenceImage.src, aiReferenceImage.shapeId);
@@ -245,11 +327,8 @@ function CanvasUI({
         />
       )}
       <ProcessingOverlay editor={editor} />
-      <ShapeAnimations editor={editor} />
-      <EntranceAnimations editor={editor} />
+      {/* ShapeAnimations removed — CSS transform conflicts with tldraw */}
       <PresentationMode editor={editor} />
-      <DepthParallax editor={editor} />
-      <ShapeIdTagger editor={editor} />
     </>
   );
 }
@@ -285,6 +364,9 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
             suppressSave.current = true;
             editor.store.loadStoreSnapshot(snapshot);
             suppressSave.current = false;
+            // Re-focus after snapshot load (loading can steal focus)
+            requestAnimationFrame(() => editor.focus());
+            setTimeout(() => editor.focus(), 100);
           }
         }
       } catch {
@@ -333,7 +415,34 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
   }, []);
 
   const handleMount = useCallback((e: Editor) => {
+    // Expose editor for programmatic access
+    (window as any).__tldrawEditor = e;
     setEditor(e);
+    
+    // Ensure focus on mount
+    e.focus();
+    setTimeout(() => e.focus(), 300);
+    setTimeout(() => e.focus(), 800);
+
+    // Fix viewport screen bounds — tldraw can miscalculate container offset
+    // when sidebar/topbar are present during mount
+    const fixBounds = () => {
+      const container = document.querySelector(".tl-container");
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const current = e.getViewportScreenBounds();
+      const Box = current.constructor as any;
+      const correctBounds = new Box(rect.x, rect.y, rect.width, rect.height);
+      if (current.x !== rect.x || current.y !== rect.y || 
+          current.w !== rect.width || current.h !== rect.height) {
+        e.updateViewportScreenBounds(correctBounds);
+      }
+    };
+    // Run after layout settles at various timings
+    requestAnimationFrame(fixBounds);
+    setTimeout(fixBounds, 100);
+    setTimeout(fixBounds, 500);
+    setTimeout(fixBounds, 1000);
 
     // Auto-compress large pasted/dropped images
     e.registerExternalAssetHandler("file", async ({ file }) => {
@@ -471,9 +580,11 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
           <CanvasUI onMount={handleMount} />
         </Tldraw>
 
-        {/* Custom overlays outside tldraw */}
-        <ToolRail editor={editor} />
-        <ZoomControls editor={editor} />
+        {/* Custom overlays outside tldraw — prevent focus steal */}
+        <div onMouseDown={(e) => { e.preventDefault(); }}>
+          <ToolRail editor={editor} />
+          <ZoomControls editor={editor} />
+        </div>
       </div>
 
       {/* Panels */}
@@ -498,145 +609,4 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
       )}
     </CanvasPanelContext.Provider>
   );
-}
-
-// ─── Auto-Parallax Depth ──────────────────────────────────────────────
-function DepthParallax({ editor }: { editor: Editor }) {
-  useEffect(() => {
-    let ticking = false;
-    const applyParallax = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const camera = editor.getCamera();
-        const shapes = editor.getCurrentPageShapeIds();
-
-        shapes.forEach((id: any) => {
-          const shape = editor.getShape(id);
-          if (!shape) return;
-
-          if (shape.type !== "image" && shape.type !== "text") return;
-
-          const el = document.querySelector(`[data-shape-id="${id}"]`) as HTMLElement;
-          if (!el) return;
-
-          const bounds = editor.getShapePageBounds(id);
-          if (!bounds) return;
-
-          // Factor represents z-depth: closer objects move more.
-          // Images have slight parallax; thick highlight headers do too.
-          const sizeFactor = Math.min((bounds.w * bounds.h) / 500000, 0.15);
-          const isBlackText = shape.type === "text" && (shape.props as any).color === "black";
-          const depth = isBlackText ? -0.05 : sizeFactor;
-
-          const px = -(camera.x * depth);
-          const py = -(camera.y * depth);
-
-          // Apply hardware accelerated transform on top of whatever Tldraw is doing
-          el.style.transform = `translate3d(${px}px, ${py}px, 0)`;
-        });
-        ticking = false;
-      });
-    };
-
-    const unsub = editor.store.listen(applyParallax, { scope: "session" });
-    return () => unsub();
-  }, [editor]);
-
-  return null;
-}
-
-// ─── Viewport Entrance Animations ─────────────────────────────────────
-function EntranceAnimations({ editor }: { editor: Editor }) {
-  const seenShapes = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    let ticking = false;
-    const checkViewport = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const vp = editor.getViewportPageBounds();
-        const shapes = editor.getCurrentPageShapeIds();
-
-        shapes.forEach((id: any) => {
-          if (seenShapes.current.has(id)) return; // Already animated in
-
-          const bounds = editor.getShapePageBounds(id);
-          if (!bounds) return;
-
-          // If bounds intersect viewport
-          if (
-            bounds.maxX > vp.minX &&
-            bounds.minX < vp.maxX &&
-            bounds.maxY > vp.minY &&
-            bounds.minY < vp.maxY
-          ) {
-            seenShapes.current.add(id);
-            const el = document.querySelector(`[data-shape-id="${id}"]`) as HTMLElement;
-            if (el) {
-              el.style.animation = "entranceScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards";
-            }
-          }
-        });
-        ticking = false;
-      });
-    };
-
-    const unsub = editor.store.listen(checkViewport, { scope: "session" });
-    return () => unsub();
-  }, [editor]);
-
-  return null;
-}
-
-// ─── Shape ID Tagger ──────────────────────────────────────────────────
-// tldraw v2 does NOT add data-shape-id to shape DOM elements.
-// This component tags them so animations/parallax can querySelector
-// by shape ID.
-function ShapeIdTagger({ editor }: { editor: Editor }) {
-  useEffect(() => {
-    const tagShapes = () => {
-      const shapes = editor.getCurrentPageShapes();
-      // Each tldraw shape container is a .tl-shape div positioned via transform matrix.
-      // We match them by comparing the transform the editor computes.
-      for (const shape of shapes) {
-        // Check if already tagged
-        const existing = document.querySelector(`[data-shape-id="${shape.id}"]`);
-        if (existing) continue;
-
-        // Get the transform matrix tldraw uses for this shape
-        const pageTransform = editor.getShapePageTransform(shape.id);
-        if (!pageTransform) continue;
-
-        // tldraw sets the CSS transform to this matrix
-        const a = pageTransform.a.toFixed(4);
-        const b = pageTransform.b.toFixed(4);
-        const c = pageTransform.c.toFixed(4);
-        const d = pageTransform.d.toFixed(4);
-        const e = pageTransform.e.toFixed(4);
-        const f = pageTransform.f.toFixed(4);
-        const cssTransform = `matrix(${a}, ${b}, ${c}, ${d}, ${e}, ${f})`;
-
-        // Find the matching .tl-shape element
-        const allShapeEls = Array.from(document.querySelectorAll('.tl-shape:not(.tl-shape-background)'));
-        for (const el of allShapeEls) {
-          if ((el as HTMLElement).dataset.shapeId) continue; // already tagged
-          const elTransform = (el as HTMLElement).style.transform;
-          if (elTransform === cssTransform) {
-            (el as HTMLElement).dataset.shapeId = shape.id;
-            break;
-          }
-        }
-      }
-    };
-
-    tagShapes();
-    const unsub = editor.store.listen(tagShapes, { scope: "document" });
-    // Also re-tag on camera movements since DOM refreshes
-    const unsub2 = editor.store.listen(tagShapes, { scope: "session" });
-    return () => { unsub(); unsub2(); };
-  }, [editor]);
-
-  return null;
 }

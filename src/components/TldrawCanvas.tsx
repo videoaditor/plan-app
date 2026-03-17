@@ -11,6 +11,7 @@ import {
   TldrawUiMenuGroup,
   TldrawUiMenuItem,
 } from "@tldraw/tldraw";
+import { EmbedShapeUtil, parseEmbedUrl } from "./shapes/EmbedShape";
 import "@tldraw/tldraw/tldraw.css";
 import {
   createContext,
@@ -567,7 +568,83 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
         offsetY += displayH + 20; // Stack multiple pastes vertically
       }
     });
+
+    // Handle pasted URLs — detect video/image links and auto-embed
+    e.registerExternalContentHandler("text", async ({ text, point }) => {
+      const trimmed = text.trim();
+      // Only handle single URLs (not multi-line text blocks)
+      if (!trimmed.match(/^https?:\/\/\S+$/)) return;
+
+      const parsed = parseEmbedUrl(trimmed);
+      if (!parsed) return;
+
+      const vp = e.getViewportPageBounds();
+      const cx = point?.x ?? vp.x + vp.w / 2;
+      const cy = point?.y ?? vp.y + vp.h / 2;
+
+      if (parsed.type === "image") {
+        // For image URLs, create an image asset + shape
+        const { AssetRecordType, createShapeId: makeId } = await import("@tldraw/tldraw");
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        const dims = await new Promise<{ w: number; h: number }>((resolve) => {
+          img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+          img.onerror = () => resolve({ w: 600, h: 400 });
+          img.src = parsed.embedUrl;
+        });
+
+        const maxDisplay = 600;
+        const scale = Math.min(1, maxDisplay / Math.max(dims.w, dims.h));
+        const displayW = Math.round(dims.w * scale);
+        const displayH = Math.round(dims.h * scale);
+
+        const assetId = AssetRecordType.createId();
+        e.createAssets([{
+          id: assetId,
+          type: "image",
+          typeName: "asset",
+          props: {
+            name: trimmed.split("/").pop() || "image",
+            src: parsed.embedUrl,
+            w: dims.w,
+            h: dims.h,
+            mimeType: "image/png",
+            isAnimated: false,
+          },
+          meta: {},
+        }]);
+
+        e.createShapes([{
+          id: makeId(),
+          type: "image",
+          x: cx - displayW / 2,
+          y: cy - displayH / 2,
+          props: { assetId, w: displayW, h: displayH },
+        }]);
+      } else {
+        // Video embed (YouTube, Vimeo, direct video)
+        const w = parsed.type === "youtube" || parsed.type === "vimeo" ? 560 : 480;
+        const h = parsed.type === "youtube" || parsed.type === "vimeo" ? 315 : 270;
+        const id = createShapeId();
+        e.createShapes([{
+          id,
+          type: "media-embed",
+          x: cx - w / 2,
+          y: cy - h / 2,
+          props: {
+            url: trimmed,
+            embedType: parsed.type,
+            embedUrl: parsed.embedUrl,
+            w,
+            h,
+          },
+        }]);
+        e.select(id);
+      }
+    });
   }, []);
+
+  const customShapeUtils = [EmbedShapeUtil];
 
   const tldrawComponents: TLComponents = {
     // Hide default toolbar (we use ToolRail)
@@ -594,6 +671,7 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
         <Tldraw
           persistenceKey={`board-${boardId}`}
           components={tldrawComponents}
+          shapeUtils={customShapeUtils}
           autoFocus
         >
           <CanvasUI onMount={handleMount} />

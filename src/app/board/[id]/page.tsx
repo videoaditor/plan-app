@@ -27,7 +27,7 @@ export default function BoardPage() {
       } else if (allBoards.length > 0) {
         router.replace(`/board/${allBoards[0].id}`);
       } else {
-        const newBoard = await createBoard("First Board");
+        const newBoard = await createBoard("My First Board");
         setBoards([newBoard]);
         setBoard(newBoard);
         router.replace(`/board/${newBoard.id}`);

@@ -61,7 +61,7 @@ export default function RootPage() {
             fontWeight: 500,
           }}
         >
-          Loading your boards…
+          Getting your boards ready…
         </p>
       </div>
     </div>

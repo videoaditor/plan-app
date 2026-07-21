@@ -15,6 +15,7 @@ export async function GET(
       id: board.id,
       name: board.name,
       color: board.color,
+      workspaceId: board.workspace_id,
       createdAt: board.created_at,
       updatedAt: board.updated_at,
     });
@@ -30,7 +31,7 @@ export async function PUT(
   try {
     const db = getDb();
     const body = await req.json();
-    const { name, color } = body;
+    const { name, color, workspaceId } = body;
 
     const board = db.prepare("SELECT * FROM boards WHERE id = ?").get(params.id) as any;
     if (!board) {
@@ -39,16 +40,18 @@ export async function PUT(
 
     const updatedName = name?.trim() || board.name;
     const updatedColor = color ?? board.color;
+    const updatedWorkspace = workspaceId ?? board.workspace_id;
     const now = Date.now();
 
     db.prepare(
-      "UPDATE boards SET name = ?, color = ?, updated_at = ? WHERE id = ?"
-    ).run(updatedName, updatedColor, now, params.id);
+      "UPDATE boards SET name = ?, color = ?, workspace_id = ?, updated_at = ? WHERE id = ?"
+    ).run(updatedName, updatedColor, updatedWorkspace, now, params.id);
 
     return NextResponse.json({
       id: params.id,
       name: updatedName,
       color: updatedColor,
+      workspaceId: updatedWorkspace,
       createdAt: board.created_at,
       updatedAt: now,
     });

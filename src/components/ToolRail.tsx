@@ -238,59 +238,39 @@ export default function ToolRail({ editor }: ToolRailProps) {
     // Reset input
     e.target.value = "";
 
-    const url = URL.createObjectURL(file);
-    const img = new window.Image();
-    img.onload = () => {
-      import("tldraw").then(({ AssetRecordType, createShapeId }) => {
-        const assetId = AssetRecordType.createId();
-        const vp = editor.getViewportPageBounds();
-        const center = { x: vp.x + vp.w / 2, y: vp.y + vp.h / 2 };
+    // Route through the registered asset handler (compresses + uploads to /uploads/,
+    // no blob:/base64 in the snapshot — same path as paste/drop). Skips the shape on failure.
+    const { createShapeId } = await import("tldraw");
+    let asset;
+    try {
+      asset = await editor.getAssetForExternalContent({ type: "file", file });
+    } catch {
+      asset = null;
+    }
+    if (!asset) return;
 
-        // Scale down if too large
-        const maxSize = 800;
-        const scale = Math.min(
-          1,
-          maxSize / img.naturalWidth,
-          maxSize / img.naturalHeight
-        );
-        const w = Math.round(img.naturalWidth * scale);
-        const h = Math.round(img.naturalHeight * scale);
+    editor.createAssets([asset]);
 
-        editor.createAssets([
-          {
-            id: assetId,
-            type: "image",
-            typeName: "asset",
-            props: {
-              name: file.name,
-              src: url,
-              w,
-              h,
-              mimeType: file.type,
-              isAnimated: false,
-            },
-            meta: {},
-          },
-        ]);
+    const aw = (asset.props as any).w || 512;
+    const ah = (asset.props as any).h || 512;
+    const maxSize = 800;
+    const scale = Math.min(1, maxSize / aw, maxSize / ah);
+    const w = Math.round(aw * scale);
+    const h = Math.round(ah * scale);
+    const vp = editor.getViewportPageBounds();
+    const center = { x: vp.x + vp.w / 2, y: vp.y + vp.h / 2 };
 
-        editor.createShapes([
-          {
-            id: createShapeId(),
-            type: "image",
-            x: center.x - w / 2,
-            y: center.y - h / 2,
-            props: {
-              assetId,
-              w,
-              h,
-            },
-          },
-        ]);
+    editor.createShapes([
+      {
+        id: createShapeId(),
+        type: "image",
+        x: center.x - w / 2,
+        y: center.y - h / 2,
+        props: { assetId: asset.id, w, h },
+      },
+    ]);
 
-        editor.setCurrentTool("select");
-      });
-    };
-    img.src = url;
+    editor.setCurrentTool("select");
   };
 
   const currentGeoIcon = shapeTools.find((s) => s.id === activeGeoShape)?.icon ?? (

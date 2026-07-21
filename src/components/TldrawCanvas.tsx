@@ -35,6 +35,17 @@ import GeneratePanel from "./GeneratePanel";
 import SearchPanel from "./SearchPanel";
 import PresentationMode from "./PresentationMode";
 
+// Upload a blob to /api/upload and return its /uploads/ URL. Throws on failure so
+// the caller (external asset handler) skips creating a shape with a dead src.
+async function uploadAsset(blob: Blob, filename: string): Promise<string> {
+  const fd = new FormData();
+  fd.append("file", blob, filename);
+  const res = await fetch("/api/upload", { method: "POST", body: fd });
+  if (!res.ok) throw new Error(`upload failed: ${res.status}`);
+  const { url } = await res.json();
+  return url as string;
+}
+
 // ─── Context for panel state ─────────────────────────────────────────
 interface CanvasPanelState {
   openGenerate: (referenceImageSrc?: string, referenceShapeId?: string) => void;
@@ -464,12 +475,14 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
     setTimeout(fixBounds, 500);
     setTimeout(fixBounds, 1000);
 
-    // Auto-compress large pasted/dropped images
+    // Compress large images, then upload to /api/upload → src is a /uploads/ URL.
+    // No base64 in the snapshot (T2) — required before it goes over the sync socket.
     e.registerExternalAssetHandler("file", async ({ file }) => {
       const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1MB threshold
       const MAX_DIMENSION = 2048;
 
-      let src: string;
+      let blob: Blob = file;
+      let name = file.name || "image.png";
       let w: number;
       let h: number;
 
@@ -487,30 +500,23 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
         ctx.drawImage(bitmap, 0, 0, w, h);
         bitmap.close();
 
-        src = canvas.toDataURL("image/jpeg", 0.85);
+        blob = await new Promise<Blob>((resolve, reject) =>
+          canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/jpeg", 0.85)
+        );
+        name = name.replace(/\.[^.]+$/, "") + ".jpg";
       } else if (file.type.startsWith("image/")) {
-        // Small image: just read as data URL without compressing
+        // Small image: upload as-is
         const bitmap = await createImageBitmap(file);
         w = bitmap.width;
         h = bitmap.height;
         bitmap.close();
-        src = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
       } else {
-        // Not an image (video, etc.) — pass through
-        src = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        // Not an image (video, etc.) — upload as-is
         w = 300;
         h = 300;
       }
+
+      const src = await uploadAsset(blob, name); // throws on failure → tldraw skips the shape
 
       const { AssetRecordType } = await import("tldraw");
       const assetId = AssetRecordType.createId();
@@ -520,11 +526,11 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
         type: "image" as const,
         typeName: "asset" as const,
         props: {
-          name: file.name || "image.png",
+          name,
           src,
           w,
           h,
-          mimeType: file.type || "image/png",
+          mimeType: blob.type || file.type || "image/png",
           isAnimated: false,
         },
         meta: {},

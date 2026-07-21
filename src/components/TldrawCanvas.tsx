@@ -6,6 +6,9 @@ import {
   createShapeId,
   type Editor,
   type TLComponents,
+  type TLAssetStore,
+  defaultShapeUtils,
+  defaultBindingUtils,
   DefaultContextMenu,
   DefaultContextMenuContent,
   TldrawUiMenuGroup,
@@ -17,10 +20,11 @@ import {
   createContext,
   useContext,
   useEffect,
-  useRef,
+  useMemo,
   useState,
   useCallback,
 } from "react";
+import { useSync } from "@tldraw/sync";
 import {
   Wand2,
   Search,
@@ -44,6 +48,39 @@ async function uploadAsset(blob: Blob, filename: string): Promise<string> {
   if (!res.ok) throw new Error(`upload failed: ${res.status}`);
   const { url } = await res.json();
   return url as string;
+}
+
+// Custom shapes — module-level so the client schema stays a stable reference and
+// matches the sync server's schema (createTLSchema + "media-embed").
+const customShapeUtils = [EmbedShapeUtil];
+
+// Sync asset store: upload through /api/upload, resolve to the stored /uploads/ URL.
+const assetStore: TLAssetStore = {
+  async upload(_asset, file) {
+    return { src: await uploadAsset(file, file.name || "asset") };
+  },
+  resolve(asset) {
+    return (asset.props as any).src ?? null;
+  },
+};
+
+const PRESENCE_COLORS = ["#2563EB", "#EC4899", "#14B8A6", "#F5D547", "#A78BFA", "#FB923C"];
+
+// Stable per-browser identity + display name for presence. The name-prompt UI
+// lands in T4; until then it reads whatever localStorage holds, else "Anon".
+function getUserInfo() {
+  if (typeof window === "undefined") return { id: "anon", name: "Anon", color: PRESENCE_COLORS[0] };
+  let id = localStorage.getItem("plan-user-id");
+  if (!id) {
+    id = "u" + Math.random().toString(36).slice(2);
+    localStorage.setItem("plan-user-id", id);
+  }
+  let color = localStorage.getItem("plan-user-color");
+  if (!color) {
+    color = PRESENCE_COLORS[Math.floor(Math.random() * PRESENCE_COLORS.length)];
+    localStorage.setItem("plan-user-color", color);
+  }
+  return { id, name: localStorage.getItem("plan-user-name") || "Anon", color };
 }
 
 // ─── Context for panel state ─────────────────────────────────────────
@@ -352,7 +389,27 @@ interface TldrawCanvasProps {
 
 export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
   const [editor, setEditor] = useState<Editor | null>(null);
-  const suppressSave = useRef(false);
+
+  // Live-sync store (T3): one room per board (roomId == boardId), presence = name + color.
+  // Replaces the old snapshot GET/PUT — the sync server is the SSoT now.
+  const syncUri = useMemo(() => {
+    const base =
+      process.env.NEXT_PUBLIC_SYNC_URL ||
+      `ws://${typeof window !== "undefined" ? window.location.hostname : "localhost"}:3051`;
+    return `${base}/connect/${boardId}`;
+  }, [boardId]);
+  const userInfo = useMemo(() => getUserInfo(), []);
+  // useSync builds its own schema and (unlike <Tldraw>) does NOT auto-merge the
+  // defaults — pass default shape/binding utils + the custom shape so the client
+  // schema matches the sync server's (createTLSchema with all defaults).
+  const syncShapeUtils = useMemo(() => [...defaultShapeUtils, ...customShapeUtils], []);
+  const store = useSync({
+    uri: syncUri,
+    assets: assetStore,
+    userInfo,
+    shapeUtils: syncShapeUtils,
+    bindingUtils: defaultBindingUtils,
+  });
 
   const [showGenerate, setShowGenerate] = useState(false);
   const [generateRef, setGenerateRef] = useState<{
@@ -361,75 +418,8 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
   } | null>(null);
   const [showSearch, setShowSearch] = useState(false);
 
-  // Load snapshot from server on mount; save on document changes (debounced 2s)
-  useEffect(() => {
-    if (!editor) return;
-
-    let saveTimer: ReturnType<typeof setTimeout> | null = null;
-
-    (async () => {
-      try {
-        const res = await fetch(`/api/boards/${boardId}/snapshot`);
-        if (res.ok) {
-          const snapshot = await res.json();
-          if (snapshot) {
-            suppressSave.current = true;
-            editor.store.loadStoreSnapshot(snapshot);
-            suppressSave.current = false;
-
-            // CRITICAL: loadStoreSnapshot overwrites screenBounds from stored data
-            // which won't match the current container position. Fix it immediately.
-            const fixScreenBounds = () => {
-              const container = document.querySelector(".tl-container");
-              if (!container) return;
-              const rect = container.getBoundingClientRect();
-              if (rect.width > 0 && rect.height > 0) {
-                const current = editor.getViewportScreenBounds();
-                const BoxCls = current.constructor as any;
-                editor.updateViewportScreenBounds(new BoxCls(rect.x, rect.y, rect.width, rect.height));
-              }
-            };
-            fixScreenBounds();
-            requestAnimationFrame(fixScreenBounds);
-            setTimeout(fixScreenBounds, 50);
-            setTimeout(fixScreenBounds, 200);
-            setTimeout(fixScreenBounds, 500);
-
-            // Re-focus after snapshot load
-            requestAnimationFrame(() => editor.focus());
-            setTimeout(() => editor.focus(), 100);
-          }
-        }
-      } catch {
-        // No snapshot or network error — tldraw uses IndexedDB fallback via persistenceKey
-      }
-    })();
-
-    const unsub = editor.store.listen(
-      () => {
-        if (suppressSave.current) return;
-        if (saveTimer) clearTimeout(saveTimer);
-        saveTimer = setTimeout(async () => {
-          try {
-            const snapshot = editor.store.getStoreSnapshot();
-            await fetch(`/api/boards/${boardId}/snapshot`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(snapshot),
-            });
-          } catch {
-            // Silently ignore save errors
-          }
-        }, 2000);
-      },
-      { scope: "document" }
-    );
-
-    return () => {
-      unsub();
-      if (saveTimer) clearTimeout(saveTimer);
-    };
-  }, [editor, boardId]);
+  // Snapshot GET/PUT removed — the sync store (above) loads + persists via the
+  // sync server. Screen-bounds/focus fixes still run on mount in handleMount.
 
   const openGenerate = useCallback(
     (referenceImageSrc?: string, referenceShapeId?: string) => {
@@ -650,8 +640,6 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
     });
   }, []);
 
-  const customShapeUtils = [EmbedShapeUtil];
-
   const tldrawComponents: TLComponents = {
     // Hide default toolbar (we use ToolRail)
     Toolbar: null,
@@ -675,7 +663,7 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
         }}
       >
         <Tldraw
-          persistenceKey={`board-${boardId}`}
+          store={store}
           components={tldrawComponents}
           shapeUtils={customShapeUtils}
           autoFocus

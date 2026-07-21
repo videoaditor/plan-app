@@ -16,6 +16,7 @@ export async function GET(
       name: board.name,
       color: board.color,
       workspaceId: board.workspace_id,
+      shareToken: board.share_token,
       createdAt: board.created_at,
       updatedAt: board.updated_at,
     });
@@ -52,6 +53,7 @@ export async function PUT(
       name: updatedName,
       color: updatedColor,
       workspaceId: updatedWorkspace,
+      shareToken: board.share_token,
       createdAt: board.created_at,
       updatedAt: now,
     });

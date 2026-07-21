@@ -35,7 +35,34 @@ export function migrate(db) {
     // column already exists
   }
 
+  // Share tokens (V2.1 T4): additive column + backfill a unique token per board.
+  try {
+    db.exec(`ALTER TABLE boards ADD COLUMN share_token TEXT`);
+  } catch {
+    // column already exists
+  }
+  backfillShareTokens(db);
+  db.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_boards_share_token ON boards(share_token)`
+  );
+
   seedWorkspaces(db);
+}
+
+/** URL-safe token for share links. No nanoid dep — collisions guarded by the unique index. */
+export function genShareToken() {
+  return (
+    Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10)
+  );
+}
+
+/** Give every board without a share_token one. Idempotent: only touches NULLs. */
+function backfillShareTokens(db) {
+  const rows = db.prepare(`SELECT id FROM boards WHERE share_token IS NULL`).all();
+  const set = db.prepare(`UPDATE boards SET share_token = ? WHERE id = ?`);
+  for (const { id } of rows) {
+    set.run(genShareToken(), id);
+  }
 }
 
 /** Seed the two default workspaces once, then backfill any board without one. */

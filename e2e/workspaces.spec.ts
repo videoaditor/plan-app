@@ -5,6 +5,8 @@ const ASSETS = "reviews/assets";
 // V2.2 move smoke: move a board from Aditor → Content, it leaves the Aditor
 // list, then reappears after switching to Content. Screenshots along the way.
 test("move a board between workspaces", async ({ page }) => {
+  // Skip the first-visit name prompt (V2.1) — this test is about the sidebar.
+  await page.addInitScript(() => localStorage.setItem("plan-user-name", "Tester"));
   await page.goto("/");
   await page.waitForURL(/\/board\/.+/, { timeout: 20_000 });
 

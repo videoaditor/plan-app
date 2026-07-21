@@ -3,6 +3,8 @@ import { test, expect } from "@playwright/test";
 // V2.1 T2: images go through /api/upload → the snapshot references a /uploads/ URL,
 // never a data:image base64 blob. Drives the real registered asset handler.
 test("image asset is uploaded, not embedded as base64", async ({ page }) => {
+  // Skip the first-visit name prompt so the canvas mounts.
+  await page.addInitScript(() => localStorage.setItem("plan-user-name", "Tester"));
   await page.goto("/");
   await page.waitForURL(/\/board\/.+/, { timeout: 20_000 });
   await page.waitForFunction(() => !!(window as any).__tldrawEditor, null, { timeout: 20_000 });

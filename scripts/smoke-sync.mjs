@@ -31,11 +31,18 @@ function stopSync(child) {
 const waitEditor = (page) =>
   page.waitForFunction(() => !!(window.__tldrawEditor), null, { timeout: 20_000 });
 
+// Seed a presence name so the first-visit name prompt (T4) doesn't gate the canvas.
+async function newCtx(name) {
+  const ctx = await browser.newContext();
+  await ctx.addInitScript((n) => localStorage.setItem("plan-user-name", n), name);
+  return ctx;
+}
+
 let sync = await startSync();
 const browser = await chromium.launch();
 try {
   // Deterministic shared board via the API.
-  const ctxA = await browser.newContext();
+  const ctxA = await newCtx("Alan");
   const pageA = await ctxA.newPage();
   const board = await (await pageA.request.post(`${APP}/api/boards`, { data: { name: "Sync Smoke" } })).json();
   const boardId = board.id;
@@ -44,7 +51,7 @@ try {
   await pageA.goto(boardUrl);
   await waitEditor(pageA);
 
-  const ctxB = await browser.newContext();
+  const ctxB = await newCtx("Nora");
   const pageB = await ctxB.newPage();
   await pageB.goto(boardUrl);
   await waitEditor(pageB);
@@ -74,7 +81,7 @@ try {
   sync = await startSync();
 
   // Fresh client on the same board → the shape is still there (seeded from disk).
-  const ctxC = await browser.newContext();
+  const ctxC = await newCtx("Sam");
   const pageC = await ctxC.newPage();
   await pageC.goto(boardUrl);
   await waitEditor(pageC);
@@ -84,7 +91,7 @@ try {
 
   // Seed-from-sqlite: a board whose only state is a legacy snapshots row (no room
   // file yet) must open non-empty — the room seeds from sqlite on first join.
-  const ctxD = await browser.newContext();
+  const ctxD = await newCtx("Guest");
   const pageD = await ctxD.newPage();
   const legacy = await (await pageD.request.post(`${APP}/api/boards`, { data: { name: "Legacy Seed" } })).json();
   const fixture = JSON.parse(fs.readFileSync("scripts/fixtures/v1-snapshot.json", "utf8"));

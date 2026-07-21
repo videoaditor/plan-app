@@ -3,10 +3,18 @@ import { NextRequest, NextResponse } from "next/server";
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
-const REMOVE_BG_API_KEY = "cLY6XcDXnkZQ3oWS5DkBpB1i";
+const REMOVE_BG_API_KEY = process.env.REMOVE_BG_API_KEY;
 
 export async function POST(req: NextRequest) {
   try {
+    if (!REMOVE_BG_API_KEY) {
+      console.error("[remove-bg] REMOVE_BG_API_KEY is not set");
+      return NextResponse.json(
+        { error: "Background removal is not configured" },
+        { status: 500 }
+      );
+    }
+
     const body = await req.json();
     const { imageUrl } = body;
 
@@ -44,7 +52,12 @@ export async function POST(req: NextRequest) {
       console.error("[remove-bg] API error:", upstream.status, errorText);
 
       if (upstream.status === 402) {
-        return NextResponse.json({ error: "Remove BG credits exhausted" }, { status: 402 });
+        // Free plan = 50 removals/month. When they run out (and no paid credits),
+        // remove.bg returns 402 until the monthly reset on the 1st.
+        return NextResponse.json(
+          { error: "Free background removals used up for this month — resets on the 1st" },
+          { status: 402 }
+        );
       }
 
       // Parse actual remove.bg error for a better message

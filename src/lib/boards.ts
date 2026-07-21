@@ -3,8 +3,17 @@ export interface Board {
   name: string;
   color: string;
   workspaceId: string | null;
+  shareToken: string | null;
   createdAt: number;
   updatedAt: number;
+}
+
+/** Rotate a board's share token; the old /s/<token> link stops resolving. Returns the new token. */
+export async function rotateShareToken(id: string): Promise<string | null> {
+  const res = await fetch(`/api/boards/${id}/share`, { method: "POST" });
+  if (!res.ok) return null;
+  const { shareToken } = await res.json();
+  return shareToken;
 }
 
 export interface Workspace {

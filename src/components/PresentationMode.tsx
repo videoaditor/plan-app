@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import type { Editor, TLShapeId } from "@tldraw/tldraw";
+import type { Editor, TLShapeId } from "tldraw";
 import { Play, X, ChevronRight, ChevronLeft } from "lucide-react";
 
 export default function PresentationMode({ editor }: { editor: Editor }) {

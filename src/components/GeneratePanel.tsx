@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Wand2, Loader2, X } from "lucide-react";
-import type { Editor } from "@tldraw/tldraw";
+import type { Editor } from "tldraw";
 import { generateImage } from "@/lib/ai";
 
 interface GeneratePanelProps {
@@ -46,7 +46,7 @@ export default function GeneratePanel({
           referenceImageUrl: referenceImageSrc,
         });
 
-        const { AssetRecordType } = await import("@tldraw/tldraw");
+        const { AssetRecordType } = await import("tldraw");
         const newAssetId = AssetRecordType.createId();
 
         editor.createAssets([{
@@ -79,7 +79,7 @@ export default function GeneratePanel({
     }
 
     // For new images: place placeholder → close → generate in background
-    const { createShapeId } = await import("@tldraw/tldraw");
+    const { createShapeId } = await import("tldraw");
     const placeholderId = createShapeId();
     const px = center.x - w / 2;
     const py = center.y - h / 2;
@@ -113,7 +113,7 @@ export default function GeneratePanel({
         aspectRatio: "1:1",
       });
 
-      const { AssetRecordType } = await import("@tldraw/tldraw");
+      const { AssetRecordType } = await import("tldraw");
       const assetId = AssetRecordType.createId();
       const iw = result.width || w;
       const ih = result.height || h;

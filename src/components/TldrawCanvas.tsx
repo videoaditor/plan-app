@@ -6,21 +6,25 @@ import {
   createShapeId,
   type Editor,
   type TLComponents,
+  type TLAssetStore,
+  defaultShapeUtils,
+  defaultBindingUtils,
   DefaultContextMenu,
   DefaultContextMenuContent,
   TldrawUiMenuGroup,
   TldrawUiMenuItem,
-} from "@tldraw/tldraw";
+} from "tldraw";
 import { EmbedShapeUtil, parseEmbedUrl } from "./shapes/EmbedShape";
-import "@tldraw/tldraw/tldraw.css";
+import "tldraw/tldraw.css";
 import {
   createContext,
   useContext,
   useEffect,
-  useRef,
+  useMemo,
   useState,
   useCallback,
 } from "react";
+import { useSync } from "@tldraw/sync";
 import {
   Wand2,
   Search,
@@ -34,6 +38,50 @@ import ProcessingOverlay from "./ProcessingOverlay";
 import GeneratePanel from "./GeneratePanel";
 import SearchPanel from "./SearchPanel";
 import PresentationMode from "./PresentationMode";
+
+// Upload a blob to /api/upload and return its /uploads/ URL. Throws on failure so
+// the caller (external asset handler) skips creating a shape with a dead src.
+async function uploadAsset(blob: Blob, filename: string): Promise<string> {
+  const fd = new FormData();
+  fd.append("file", blob, filename);
+  const res = await fetch("/api/upload", { method: "POST", body: fd });
+  if (!res.ok) throw new Error(`upload failed: ${res.status}`);
+  const { url } = await res.json();
+  return url as string;
+}
+
+// Custom shapes — module-level so the client schema stays a stable reference and
+// matches the sync server's schema (createTLSchema + "media-embed").
+const customShapeUtils = [EmbedShapeUtil];
+
+// Sync asset store: upload through /api/upload, resolve to the stored /uploads/ URL.
+const assetStore: TLAssetStore = {
+  async upload(_asset, file) {
+    return { src: await uploadAsset(file, file.name || "asset") };
+  },
+  resolve(asset) {
+    return (asset.props as any).src ?? null;
+  },
+};
+
+const PRESENCE_COLORS = ["#2563EB", "#EC4899", "#14B8A6", "#F5D547", "#A78BFA", "#FB923C"];
+
+// Stable per-browser identity + display name for presence. The name-prompt UI
+// lands in T4; until then it reads whatever localStorage holds, else "Anon".
+function getUserInfo() {
+  if (typeof window === "undefined") return { id: "anon", name: "Anon", color: PRESENCE_COLORS[0] };
+  let id = localStorage.getItem("plan-user-id");
+  if (!id) {
+    id = "u" + Math.random().toString(36).slice(2);
+    localStorage.setItem("plan-user-id", id);
+  }
+  let color = localStorage.getItem("plan-user-color");
+  if (!color) {
+    color = PRESENCE_COLORS[Math.floor(Math.random() * PRESENCE_COLORS.length)];
+    localStorage.setItem("plan-user-color", color);
+  }
+  return { id, name: localStorage.getItem("plan-user-name") || "Anon", color };
+}
 
 // ─── Context for panel state ─────────────────────────────────────────
 interface CanvasPanelState {
@@ -341,7 +389,27 @@ interface TldrawCanvasProps {
 
 export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
   const [editor, setEditor] = useState<Editor | null>(null);
-  const suppressSave = useRef(false);
+
+  // Live-sync store (T3): one room per board (roomId == boardId), presence = name + color.
+  // Replaces the old snapshot GET/PUT — the sync server is the SSoT now.
+  const syncUri = useMemo(() => {
+    const base =
+      process.env.NEXT_PUBLIC_SYNC_URL ||
+      `ws://${typeof window !== "undefined" ? window.location.hostname : "localhost"}:3051`;
+    return `${base}/connect/${boardId}`;
+  }, [boardId]);
+  const userInfo = useMemo(() => getUserInfo(), []);
+  // useSync builds its own schema and (unlike <Tldraw>) does NOT auto-merge the
+  // defaults — pass default shape/binding utils + the custom shape so the client
+  // schema matches the sync server's (createTLSchema with all defaults).
+  const syncShapeUtils = useMemo(() => [...defaultShapeUtils, ...customShapeUtils], []);
+  const store = useSync({
+    uri: syncUri,
+    assets: assetStore,
+    userInfo,
+    shapeUtils: syncShapeUtils,
+    bindingUtils: defaultBindingUtils,
+  });
 
   const [showGenerate, setShowGenerate] = useState(false);
   const [generateRef, setGenerateRef] = useState<{
@@ -350,75 +418,8 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
   } | null>(null);
   const [showSearch, setShowSearch] = useState(false);
 
-  // Load snapshot from server on mount; save on document changes (debounced 2s)
-  useEffect(() => {
-    if (!editor) return;
-
-    let saveTimer: ReturnType<typeof setTimeout> | null = null;
-
-    (async () => {
-      try {
-        const res = await fetch(`/api/boards/${boardId}/snapshot`);
-        if (res.ok) {
-          const snapshot = await res.json();
-          if (snapshot) {
-            suppressSave.current = true;
-            editor.store.loadStoreSnapshot(snapshot);
-            suppressSave.current = false;
-
-            // CRITICAL: loadStoreSnapshot overwrites screenBounds from stored data
-            // which won't match the current container position. Fix it immediately.
-            const fixScreenBounds = () => {
-              const container = document.querySelector(".tl-container");
-              if (!container) return;
-              const rect = container.getBoundingClientRect();
-              if (rect.width > 0 && rect.height > 0) {
-                const current = editor.getViewportScreenBounds();
-                const BoxCls = current.constructor as any;
-                editor.updateViewportScreenBounds(new BoxCls(rect.x, rect.y, rect.width, rect.height));
-              }
-            };
-            fixScreenBounds();
-            requestAnimationFrame(fixScreenBounds);
-            setTimeout(fixScreenBounds, 50);
-            setTimeout(fixScreenBounds, 200);
-            setTimeout(fixScreenBounds, 500);
-
-            // Re-focus after snapshot load
-            requestAnimationFrame(() => editor.focus());
-            setTimeout(() => editor.focus(), 100);
-          }
-        }
-      } catch {
-        // No snapshot or network error — tldraw uses IndexedDB fallback via persistenceKey
-      }
-    })();
-
-    const unsub = editor.store.listen(
-      () => {
-        if (suppressSave.current) return;
-        if (saveTimer) clearTimeout(saveTimer);
-        saveTimer = setTimeout(async () => {
-          try {
-            const snapshot = editor.store.getStoreSnapshot();
-            await fetch(`/api/boards/${boardId}/snapshot`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(snapshot),
-            });
-          } catch {
-            // Silently ignore save errors
-          }
-        }, 2000);
-      },
-      { scope: "document" }
-    );
-
-    return () => {
-      unsub();
-      if (saveTimer) clearTimeout(saveTimer);
-    };
-  }, [editor, boardId]);
+  // Snapshot GET/PUT removed — the sync store (above) loads + persists via the
+  // sync server. Screen-bounds/focus fixes still run on mount in handleMount.
 
   const openGenerate = useCallback(
     (referenceImageSrc?: string, referenceShapeId?: string) => {
@@ -464,12 +465,14 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
     setTimeout(fixBounds, 500);
     setTimeout(fixBounds, 1000);
 
-    // Auto-compress large pasted/dropped images
+    // Compress large images, then upload to /api/upload → src is a /uploads/ URL.
+    // No base64 in the snapshot (T2) — required before it goes over the sync socket.
     e.registerExternalAssetHandler("file", async ({ file }) => {
       const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1MB threshold
       const MAX_DIMENSION = 2048;
 
-      let src: string;
+      let blob: Blob = file;
+      let name = file.name || "image.png";
       let w: number;
       let h: number;
 
@@ -487,32 +490,25 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
         ctx.drawImage(bitmap, 0, 0, w, h);
         bitmap.close();
 
-        src = canvas.toDataURL("image/jpeg", 0.85);
+        blob = await new Promise<Blob>((resolve, reject) =>
+          canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/jpeg", 0.85)
+        );
+        name = name.replace(/\.[^.]+$/, "") + ".jpg";
       } else if (file.type.startsWith("image/")) {
-        // Small image: just read as data URL without compressing
+        // Small image: upload as-is
         const bitmap = await createImageBitmap(file);
         w = bitmap.width;
         h = bitmap.height;
         bitmap.close();
-        src = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
       } else {
-        // Not an image (video, etc.) — pass through
-        src = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        // Not an image (video, etc.) — upload as-is
         w = 300;
         h = 300;
       }
 
-      const { AssetRecordType } = await import("@tldraw/tldraw");
+      const src = await uploadAsset(blob, name); // throws on failure → tldraw skips the shape
+
+      const { AssetRecordType } = await import("tldraw");
       const assetId = AssetRecordType.createId();
 
       return {
@@ -520,11 +516,11 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
         type: "image" as const,
         typeName: "asset" as const,
         props: {
-          name: file.name || "image.png",
+          name,
           src,
           w,
           h,
-          mimeType: file.type || "image/png",
+          mimeType: blob.type || file.type || "image/png",
           isAnimated: false,
         },
         meta: {},
@@ -533,7 +529,7 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
 
     // Override paste/drop placement — center images in the current viewport
     e.registerExternalContentHandler("files", async ({ files, point }) => {
-      const { AssetRecordType, createShapeId: makeId } = await import("@tldraw/tldraw");
+      const { AssetRecordType, createShapeId: makeId } = await import("tldraw");
       const vp = e.getViewportPageBounds();
       // Place at the given point (drop target) or viewport center (paste)
       const cx = point?.x ?? vp.x + vp.w / 2;
@@ -584,7 +580,7 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
 
       if (parsed.type === "image") {
         // For image URLs, create an image asset + shape
-        const { AssetRecordType, createShapeId: makeId } = await import("@tldraw/tldraw");
+        const { AssetRecordType, createShapeId: makeId } = await import("tldraw");
         const img = new Image();
         img.crossOrigin = "anonymous";
         const dims = await new Promise<{ w: number; h: number }>((resolve) => {
@@ -644,8 +640,6 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
     });
   }, []);
 
-  const customShapeUtils = [EmbedShapeUtil];
-
   const tldrawComponents: TLComponents = {
     // Hide default toolbar (we use ToolRail)
     Toolbar: null,
@@ -669,7 +663,7 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
         }}
       >
         <Tldraw
-          persistenceKey={`board-${boardId}`}
+          store={store}
           components={tldrawComponents}
           shapeUtils={customShapeUtils}
           autoFocus

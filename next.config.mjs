@@ -12,7 +12,7 @@ const nextConfig = {
     NEXT_PUBLIC_APP_VERSION: gitHash,
     NEXT_PUBLIC_BUILD_DATE: buildDate,
   },
-  transpilePackages: ["@tldraw/tldraw", "@tldraw/assets", "@tldraw/editor", "@tldraw/store", "@tldraw/tlschema"],
+  transpilePackages: ["tldraw", "@tldraw/assets", "@tldraw/editor", "@tldraw/store", "@tldraw/tlschema"],
   experimental: {
     serverComponentsExternalPackages: ["better-sqlite3"],
     serverActions: {

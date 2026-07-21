@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import getDb from "@/lib/db";
+import { genShareToken } from "@/lib/migrate.mjs";
 
 const BOARD_COLORS = [
   "#F5D547", "#2563EB", "#EC4899", "#14B8A6",
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest) {
         name: b.name,
         color: b.color,
         workspaceId: b.workspace_id,
+        shareToken: b.share_token,
         createdAt: b.created_at,
         updatedAt: b.updated_at,
       }))
@@ -59,13 +61,14 @@ export async function POST(req: NextRequest) {
 
     const id = generateId();
     const now = Date.now();
+    const shareToken = genShareToken();
 
     db.prepare(
-      "INSERT INTO boards (id, name, color, workspace_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run(id, name, boardColor, ws, now, now);
+      "INSERT INTO boards (id, name, color, workspace_id, share_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    ).run(id, name, boardColor, ws, shareToken, now, now);
 
     return NextResponse.json(
-      { id, name, color: boardColor, workspaceId: ws, createdAt: now, updatedAt: now },
+      { id, name, color: boardColor, workspaceId: ws, shareToken, createdAt: now, updatedAt: now },
       { status: 201 }
     );
   } catch (err) {

@@ -7,7 +7,7 @@ import {
   type TLResizeInfo,
   resizeBox,
   BaseBoxShapeUtil,
-} from "@tldraw/tldraw";
+} from "tldraw";
 
 // ─── URL helpers ─────────────────────────────────────────────────────
 

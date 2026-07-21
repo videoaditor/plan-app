@@ -42,3 +42,7 @@ playwright-report/
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# local dev logs
+dev.log
+sync.log

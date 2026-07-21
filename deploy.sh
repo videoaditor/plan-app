@@ -29,6 +29,19 @@ pm2 restart plan-app 2>&1 || {
   pm2 start npm --name plan-app -- start 2>&1
 }
 
+# Sync server (V2.1) — second process, port 3051. One TLSocketRoom per board.
+pm2 restart plan-sync 2>&1 || {
+  echo "[$(date -Iseconds)] plan-sync restart failed, recreating..."
+  pm2 delete plan-sync 2>&1 || true
+  pm2 start node --name plan-sync -- sync-server/index.mjs 2>&1
+}
+
 pm2 save 2>&1 || true
 
 echo "[$(date -Iseconds)] Deploy complete ✓"
+
+# ── Rollout note (one-time, done by Alan, not this script) ─────────────
+# The browser must reach the sync server over wss. Add an nginx location that
+# proxies /sync/ → http://127.0.0.1:3051/ with Upgrade/Connection headers, and
+# set NEXT_PUBLIC_SYNC_URL=wss://plan.aditor.ai/sync in the app env before build.
+# Without it the client falls back to ws://<host>:3051 (dev only).

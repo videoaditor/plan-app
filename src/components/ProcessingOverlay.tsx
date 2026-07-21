@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Editor } from "@tldraw/tldraw";
+import type { Editor } from "tldraw";
 
 interface ProcessingShape {
   id: string;

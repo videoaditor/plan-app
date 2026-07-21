@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { PanelLeft, RefreshCw } from "lucide-react";
-import { renameBoard, type Board } from "@/lib/boards";
+import { PanelLeft, RefreshCw, Link2, Copy, Check } from "lucide-react";
+import { renameBoard, rotateShareToken, type Board } from "@/lib/boards";
 import ThemeToggle from "./ThemeToggle";
 import CanvasSettings from "./CanvasSettings";
 
@@ -25,9 +25,40 @@ export default function TopBar({
   const [deploying, setDeploying] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [shareOpen, setShareOpen] = useState(false);
+  const [token, setToken] = useState<string | null>(board.shareToken);
+  const [rotating, setRotating] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     setName(board.name);
   }, [board.name]);
+
+  useEffect(() => {
+    setToken(board.shareToken);
+  }, [board.shareToken]);
+
+  const shareUrl =
+    token && typeof window !== "undefined" ? `${window.location.origin}/s/${token}` : "";
+
+  const copyLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard blocked — no-op
+    }
+  };
+
+  const rotate = async () => {
+    if (rotating) return;
+    setRotating(true);
+    const next = await rotateShareToken(board.id);
+    if (next) setToken(next);
+    setRotating(false);
+  };
 
   useEffect(() => {
     if (editing) {
@@ -185,6 +216,104 @@ export default function TopBar({
 
       {/* Right: actions */}
       <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
+        {/* Share */}
+        <div style={{ position: "relative", marginRight: 4 }}>
+          <button
+            onClick={() => setShareOpen((v) => !v)}
+            title="Share board"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              height: 30,
+              padding: "0 12px",
+              fontSize: 13,
+              fontWeight: 600,
+              color: shareOpen ? "var(--accent-blue)" : "var(--text-primary)",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 100,
+              cursor: "pointer",
+            }}
+          >
+            <Link2 size={14} strokeWidth={2} />
+            Share
+          </button>
+
+          {shareOpen && (
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 399 }}
+                onClick={() => setShareOpen(false)}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 8px)",
+                  right: 0,
+                  zIndex: 450,
+                  width: 320,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  padding: 14,
+                  boxShadow: "var(--shadow-float)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 10,
+                  animation: "scaleIn 150ms ease",
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                  Anyone with the link can edit
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input
+                    readOnly
+                    value={shareUrl}
+                    onFocus={(e) => e.currentTarget.select()}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      fontSize: 12,
+                      color: "var(--text-secondary)",
+                      background: "var(--surface-hover)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      padding: "8px 10px",
+                      outline: "none",
+                    }}
+                  />
+                  <button
+                    onClick={copyLink}
+                    title="Copy link"
+                    className="btn-icon"
+                    style={{ width: 34, height: 34, flexShrink: 0, color: copied ? "var(--accent-blue)" : undefined }}
+                  >
+                    {copied ? <Check size={15} strokeWidth={2} /> : <Copy size={15} strokeWidth={1.75} />}
+                  </button>
+                </div>
+                <button
+                  onClick={rotate}
+                  disabled={rotating}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    color: "var(--text-secondary)",
+                    background: "transparent",
+                    border: "none",
+                    padding: 0,
+                    cursor: rotating ? "default" : "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  {rotating ? "Generating…" : "Generate new link"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
         <button
           onClick={async () => {
             if (deploying) return;

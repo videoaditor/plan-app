@@ -10,15 +10,23 @@ function generateId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const db = getDb();
-    const rows = db.prepare("SELECT * FROM boards ORDER BY created_at ASC").all() as any[];
+    const workspace = req.nextUrl.searchParams.get("workspace");
+    const rows = (
+      workspace
+        ? db
+            .prepare("SELECT * FROM boards WHERE workspace_id = ? ORDER BY created_at ASC")
+            .all(workspace)
+        : db.prepare("SELECT * FROM boards ORDER BY created_at ASC").all()
+    ) as any[];
     return NextResponse.json(
       rows.map((b) => ({
         id: b.id,
         name: b.name,
         color: b.color,
+        workspaceId: b.workspace_id,
         createdAt: b.created_at,
         updatedAt: b.updated_at,
       }))
@@ -31,7 +39,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, color } = body;
+    const { name, color, workspaceId } = body;
 
     if (!name) {
       return NextResponse.json({ error: "name is required" }, { status: 400 });
@@ -41,15 +49,23 @@ export async function POST(req: NextRequest) {
     const countRow = db.prepare("SELECT COUNT(*) as count FROM boards").get() as any;
     const boardColor = color ?? BOARD_COLORS[countRow.count % BOARD_COLORS.length];
 
+    // Fall back to the first workspace when the client doesn't pin one.
+    const ws =
+      workspaceId ??
+      (db
+        .prepare("SELECT id FROM workspaces ORDER BY sort ASC, created_at ASC LIMIT 1")
+        .get() as any)?.id ??
+      null;
+
     const id = generateId();
     const now = Date.now();
 
     db.prepare(
-      "INSERT INTO boards (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
-    ).run(id, name, boardColor, now, now);
+      "INSERT INTO boards (id, name, color, workspace_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
+    ).run(id, name, boardColor, ws, now, now);
 
     return NextResponse.json(
-      { id, name, color: boardColor, createdAt: now, updatedAt: now },
+      { id, name, color: boardColor, workspaceId: ws, createdAt: now, updatedAt: now },
       { status: 201 }
     );
   } catch (err) {

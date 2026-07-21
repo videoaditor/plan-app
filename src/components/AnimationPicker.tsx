@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Editor } from "@tldraw/tldraw";
+import type { Editor } from "tldraw";
 
 export type AnimationType =
   | "none"

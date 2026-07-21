@@ -10,9 +10,9 @@ import {
   DefaultContextMenuContent,
   TldrawUiMenuGroup,
   TldrawUiMenuItem,
-} from "@tldraw/tldraw";
+} from "tldraw";
 import { EmbedShapeUtil, parseEmbedUrl } from "./shapes/EmbedShape";
-import "@tldraw/tldraw/tldraw.css";
+import "tldraw/tldraw.css";
 import {
   createContext,
   useContext,
@@ -512,7 +512,7 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
         h = 300;
       }
 
-      const { AssetRecordType } = await import("@tldraw/tldraw");
+      const { AssetRecordType } = await import("tldraw");
       const assetId = AssetRecordType.createId();
 
       return {
@@ -533,7 +533,7 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
 
     // Override paste/drop placement — center images in the current viewport
     e.registerExternalContentHandler("files", async ({ files, point }) => {
-      const { AssetRecordType, createShapeId: makeId } = await import("@tldraw/tldraw");
+      const { AssetRecordType, createShapeId: makeId } = await import("tldraw");
       const vp = e.getViewportPageBounds();
       // Place at the given point (drop target) or viewport center (paste)
       const cx = point?.x ?? vp.x + vp.w / 2;
@@ -584,7 +584,7 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
 
       if (parsed.type === "image") {
         // For image URLs, create an image asset + shape
-        const { AssetRecordType, createShapeId: makeId } = await import("@tldraw/tldraw");
+        const { AssetRecordType, createShapeId: makeId } = await import("tldraw");
         const img = new Image();
         img.crossOrigin = "anonymous";
         const dims = await new Promise<{ w: number; h: number }>((resolve) => {

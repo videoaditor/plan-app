@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { X, Search, Loader2, Image as ImageIcon } from "lucide-react";
-import type { Editor } from "@tldraw/tldraw";
+import type { Editor } from "tldraw";
 import { searchImages, type ImageSearchResult } from "@/lib/ai";
 
 interface SearchPanelProps {
@@ -37,7 +37,7 @@ export default function SearchPanel({ editor, onClose }: SearchPanelProps) {
     setPlacingId(img.id);
 
     try {
-      const { AssetRecordType, createShapeId } = await import("@tldraw/tldraw");
+      const { AssetRecordType, createShapeId } = await import("tldraw");
       const assetId = AssetRecordType.createId();
       const vp = editor.getViewportPageBounds();
       const center = { x: vp.x + vp.w / 2, y: vp.y + vp.h / 2 };

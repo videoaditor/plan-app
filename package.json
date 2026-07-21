@@ -8,15 +8,16 @@
     "start": "next start -p 3050",
     "lint": "next lint",
     "smoke:workspaces": "node scripts/smoke-workspaces.mjs",
+    "smoke:migration": "node scripts/smoke-migration.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@tldraw/tldraw": "^2.4.4",
     "better-sqlite3": "^12.8.0",
     "lucide-react": "^0.469.0",
     "next": "14.2.18",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "tldraw": "^3.15.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Wand2, Scissors, Loader2, Send, X, Video } from "lucide-react";
-import type { Editor } from "@tldraw/tldraw";
+import type { Editor } from "tldraw";
 import { removeBackground, generateImage, animateImage } from "@/lib/ai";
 
 interface AiToolbarProps {
@@ -27,7 +27,7 @@ async function runRemoveBg(
     if (!imageUrl) throw new Error("No result URL");
 
     // Create new asset + update shape (even if no longer selected)
-    const { AssetRecordType } = await import("@tldraw/tldraw");
+    const { AssetRecordType } = await import("tldraw");
     const newAssetId = AssetRecordType.createId();
     editor.createAssets([
       {
@@ -107,7 +107,7 @@ async function runAiEdit(
     });
     if (!result.imageUrl) throw new Error("No result URL");
 
-    const { AssetRecordType, createShapeId } = await import("@tldraw/tldraw");
+    const { AssetRecordType, createShapeId } = await import("tldraw");
 
     // Get original shape bounds for adjacent placement
     const origShape = editor.getShape(shapeId as any);

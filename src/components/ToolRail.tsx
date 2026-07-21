@@ -19,7 +19,7 @@ import {
   Parentheses,
   CornerDownRight
 } from "lucide-react";
-import type { Editor } from "@tldraw/tldraw";
+import type { Editor } from "tldraw";
 
 interface ToolRailProps {
   editor: Editor | null;
@@ -163,7 +163,7 @@ export default function ToolRail({ editor }: ToolRailProps) {
     setShowVox(false);
 
     // Use dynamic import to avoid SSR issues with tldraw style imports
-    import("@tldraw/tldraw").then(({ GeoShapeGeoStyle }) => {
+    import("tldraw").then(({ GeoShapeGeoStyle }) => {
       editor.batch(() => {
         editor.setStyleForNextShapes(GeoShapeGeoStyle, geoType as any);
         editor.setCurrentTool("geo");
@@ -174,7 +174,7 @@ export default function ToolRail({ editor }: ToolRailProps) {
   const spawnVoxShape = async (shapeDef: any) => {
     if (!editor) return;
     setShowVox(false);
-    const { createShapeId } = await import("@tldraw/tldraw");
+    const { createShapeId } = await import("tldraw");
     const shapeId = createShapeId();
     const vp = editor.getViewportPageBounds();
 
@@ -241,7 +241,7 @@ export default function ToolRail({ editor }: ToolRailProps) {
     const url = URL.createObjectURL(file);
     const img = new window.Image();
     img.onload = () => {
-      import("@tldraw/tldraw").then(({ AssetRecordType, createShapeId }) => {
+      import("tldraw").then(({ AssetRecordType, createShapeId }) => {
         const assetId = AssetRecordType.createId();
         const vp = editor.getViewportPageBounds();
         const center = { x: vp.x + vp.w / 2, y: vp.y + vp.h / 2 };

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
-import type { Editor } from "@tldraw/tldraw";
+import type { Editor } from "tldraw";
 
 interface ZoomControlsProps {
   editor: Editor | null;

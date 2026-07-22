@@ -6,7 +6,7 @@
     "dev": "node scripts/dev.mjs",
     "dev:app": "next dev -p 3050",
     "build": "next build",
-    "start": "next start -p 3050",
+    "start": "NODE_ENV=production node server.mjs",
     "lint": "next lint",
     "smoke:workspaces": "node scripts/smoke-workspaces.mjs",
     "smoke:migration": "node scripts/smoke-migration.mjs",

@@ -1,7 +1,7 @@
 // V2.1 T3 smoke: live multiplayer + restart persistence. Self-contained — it owns
-// the sync-server child process so it can restart it mid-test. Requires the Next
-// dev app already running on :3050.
-//   npm run dev &            # once
+// the sync-server child process (port 3051) so it can restart it mid-test. Run the
+// APP ONLY (not `npm run dev`, which starts its own sync and would clash on 3051):
+//   npm run dev:app &        # Next app on :3050, no sync
 //   node scripts/smoke-sync.mjs
 import { chromium } from "@playwright/test";
 import { spawn } from "node:child_process";

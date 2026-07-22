@@ -393,10 +393,16 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
   // Live-sync store (T3): one room per board (roomId == boardId), presence = name + color.
   // Replaces the old snapshot GET/PUT — the sync server is the SSoT now.
   const syncUri = useMemo(() => {
-    const base =
-      process.env.NEXT_PUBLIC_SYNC_URL ||
-      `ws://${typeof window !== "undefined" ? window.location.hostname : "localhost"}:3051`;
-    return `${base}/connect/${boardId}`;
+    // Prod: same origin over wss (sync served by server.mjs at /sync — Cloudflare
+    // passes it through, nothing to configure). Dev: the standalone server on :3051.
+    // NEXT_PUBLIC_SYNC_URL overrides both if ever needed.
+    if (process.env.NEXT_PUBLIC_SYNC_URL) {
+      return `${process.env.NEXT_PUBLIC_SYNC_URL}/connect/${boardId}`;
+    }
+    if (typeof window === "undefined") return `ws://localhost:3051/connect/${boardId}`;
+    return window.location.protocol === "https:"
+      ? `wss://${window.location.host}/sync/connect/${boardId}`
+      : `ws://${window.location.hostname}:3051/connect/${boardId}`;
   }, [boardId]);
   const userInfo = useMemo(() => getUserInfo(), []);
   // useSync builds its own schema and (unlike <Tldraw>) does NOT auto-merge the

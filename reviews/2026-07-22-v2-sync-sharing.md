@@ -32,9 +32,8 @@ Boards teilen war der meist-vermisste Baustein: heute überschreibt der Client a
 - [x] Screenshots in `reviews/assets/`: `t1-fixture-board.png` · `t3-two-cursors.png` · `t4-share-popover.png` · `t4-name-prompt.png`
 - [ ] *(Rollout, gehört Alan)* nach dem Deploy ein echtes Alt-Board auf plan.aditor.ai öffnen, bevor er weiterdeployt
 
-## Rollout (Alan, nach Review — nicht im Branch automatisiert)
-1. `deploy.sh` startet jetzt einen zweiten PM2-Prozess `plan-sync` (Port 3051).
-2. Der Browser muss den Sync-Server über **wss** erreichen: nginx-`location /sync/` → `http://127.0.0.1:3051/` mit `Upgrade`/`Connection`-Headern, und `NEXT_PUBLIC_SYNC_URL=wss://plan.aditor.ai/sync` in der App-Env **vor dem Build** setzen. Ohne die Env fällt der Client auf `ws://<host>:3051` zurück (nur Dev).
+## Rollout — kein Extra-Setup mehr
+Production läuft über `server.mjs` (custom Next-Server): App **und** Sync auf **einem** Port, Sync unter `/sync`. plan.aditor.ai steht hinter Cloudflare, das WebSockets automatisch durchreicht — also **keine** nginx-Änderung, **keine** Env, **kein** zweiter Port. `deploy.sh` startet nur noch `plan-app` (= `npm start` → `server.mjs`) und entfernt den alten `plan-sync`-Prozess. Für Alan: **Deploy-Button drücken, fertig.** Falls live etwas klemmt: `git revert` des Merges + Deploy rollt zurück; Board-Daten in `data/` bleiben unangetastet.
 
 ## Offene Taste-Fragen
 1. **tldraw v3 vs v5:** Der Spec pinnt `^3` — aktuell installiert 3.15.6. tldraws Latest ist inzwischen v5.2.5. Ich bin dem Spec gefolgt (kleinerer Migrationssprung, passende `@tldraw/sync@3.15.6`). Später auf v5 gehen oder auf v3 bleiben?
@@ -63,7 +62,7 @@ Boards teilen war der meist-vermisste Baustein: heute überschreibt der Client a
 - `sync-server/index.mjs`: node `http` + `ws` + `TLSocketRoom` (ein Room == ein Board). `ws`-Socket erfüllt `WebSocketMinimal` → direkt an `handleSocketConnect`. Persistenz: 30-s-Intervall + `onSessionRemoved`(letzter Client) → `data/rooms/<boardId>.json`; Seed-Reihenfolge Room-Datei → sqlite-`snapshots`-Row → leer. Graceful persist auf SIGTERM.
 - Client: `useSync({ uri, assets, userInfo, shapeUtils, bindingUtils })` ersetzt Snapshot-GET/PUT + Debounce-Save. Wichtig: `useSync` merged (anders als `<Tldraw>`) die Defaults NICHT automatisch → `defaultShapeUtils`/`defaultBindingUtils` + `EmbedShapeUtil` explizit übergeben, damit Client- und Server-Schema übereinstimmen (sonst „arrow binding depends on missing arrow shape migration").
 - Presence: `id`/`name`/`color` aus localStorage.
-- `deploy.sh` startet `plan-sync` als zweiten PM2-Prozess.
+- **Prod-Transport:** `server.mjs` (custom Next-Server) serviert App + Sync (`/sync`) auf einem Port; `sync-server/rooms.mjs` ist die geteilte Room-Logik (dev nutzt die Standalone-Variante auf :3051). Client wählt die uri: prod `wss://<host>/sync`, dev `ws://<host>:3051`. Kein nginx/Env nötig — Cloudflare reicht WS durch.
 
 ### T4 — Share-Links
 - `migrate.mjs`: additive `share_token`-Spalte + Unique-Index + Backfill; `genShareToken()` (kein nanoid-Dep). Neue Boards bekommen beim Anlegen einen Token; Rotation via `POST /api/boards/[id]/share`.

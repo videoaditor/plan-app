@@ -16,7 +16,7 @@ export default defineConfig({
   // the canvas never leaves its loading state and blocks UI interactions.
   webServer: [
     {
-      command: "npm run dev",
+      command: "npm run dev:app",
       url: "http://localhost:3050",
       reuseExistingServer: true,
       timeout: 120_000,

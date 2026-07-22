@@ -37,7 +37,7 @@ import AnimationPicker, { getShapeAnimation, ShapeAnimations, type AnimationType
 import ProcessingOverlay from "./ProcessingOverlay";
 import GeneratePanel from "./GeneratePanel";
 import SearchPanel from "./SearchPanel";
-import PresentationMode from "./PresentationMode";
+import StudioMode from "./StudioMode";
 
 // Upload a blob to /api/upload and return its /uploads/ URL. Throws on failure so
 // the caller (external asset handler) skips creating a shape with a dead src.
@@ -377,7 +377,7 @@ function CanvasUI({
       )}
       <ProcessingOverlay editor={editor} />
       {/* ShapeAnimations removed — CSS transform conflicts with tldraw */}
-      <PresentationMode editor={editor} />
+      {/* Studio mode (scenes/facecam) is mounted outside <Tldraw> — see below */}
     </>
   );
 }
@@ -423,6 +423,7 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
     shapeId?: string;
   } | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+  const [studioMode, setStudioMode] = useState(false);
 
   // Snapshot GET/PUT removed — the sync store (above) loads + persists via the
   // sync server. Screen-bounds/focus fixes still run on mount in handleMount.
@@ -646,18 +647,32 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
     });
   }, []);
 
-  const tldrawComponents: TLComponents = {
-    // Hide default toolbar (we use ToolRail)
-    Toolbar: null,
-    // Hide navigation panel (we use ZoomControls)
-    NavigationPanel: null,
-    // Hide main menu (hamburger)
-    MainMenu: null,
-    // Hide help menu
-    HelpMenu: null,
-    // Custom context menu with AI options
-    ContextMenu: AIContextMenu,
-  };
+  const tldrawComponents: TLComponents = useMemo(
+    () => ({
+      // Hide default toolbar (we use ToolRail)
+      Toolbar: null,
+      // Hide navigation panel (we use ZoomControls)
+      NavigationPanel: null,
+      // Hide main menu (hamburger)
+      MainMenu: null,
+      // Hide help menu
+      HelpMenu: null,
+      // Custom context menu with AI options
+      ContextMenu: AIContextMenu,
+      // Studio mode: hide other people's cursors/brushes/indicators (clean
+      // tldraw override, not a CSS hack over its internals).
+      ...(studioMode
+        ? {
+            CollaboratorCursor: null,
+            CollaboratorHint: null,
+            CollaboratorBrush: null,
+            CollaboratorScribble: null,
+            CollaboratorShapeIndicator: null,
+          }
+        : {}),
+    }),
+    [studioMode]
+  );
 
   return (
     <CanvasPanelContext.Provider value={{ openGenerate, openSearch }}>
@@ -682,6 +697,11 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
           <ToolRail editor={editor} />
           <ZoomControls editor={editor} />
         </div>
+
+        {/* Studio mode: scenes, camera navigation, facecam bubble */}
+        {editor && (
+          <StudioMode editor={editor} studio={studioMode} setStudio={setStudioMode} />
+        )}
       </div>
 
       {/* Panels */}

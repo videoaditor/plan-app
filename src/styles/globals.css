@@ -805,99 +805,20 @@ html.theme-transitioning *::after {
   transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease !important;
 }
 
-/* ─── Presentation Mode ─────────────────────────────── */
-body.is-presenting .tool-rail,
-body.is-presenting .zoom-controls,
-body.is-presenting .ai-toolbar,
-body.is-presenting .animation-trigger {
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transition: opacity 0.5s ease;
-}
-
-.presentation-vignette {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 495;
-  box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.9);
-  animation: fadeInVignette 2s ease-out;
-}
-
-@keyframes fadeInVignette {
-  from {
-    opacity: 0;
-    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0);
-  }
-
-  to {
-    opacity: 1;
-    box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.9);
-  }
-}
-
-.presentation-controls {
-  position: fixed;
-  bottom: 32px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 100px;
-  padding: 8px 16px;
-  z-index: 500;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes slideUp {
-  from {
-    transform: translate(-50%, 100px);
-    opacity: 0;
-  }
-
-  to {
-    transform: translate(-50%, 0);
-    opacity: 1;
-  }
-}
-
-.presentation-controls button {
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.presentation-controls button:hover:not(:disabled) {
-  background: var(--surface-hover);
-}
-
-.presentation-controls button:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.presentation-controls .exit-btn {
-  color: var(--accent-red);
-}
-
-.marker-progress {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-  padding: 0 8px;
+/* ─── Studio Mode ─────────────────────────────────────
+   A distraction-free stage for recording. Hide ALL chrome — our own rails and
+   the app frame plus tldraw's whole UI layer (.tlui-layout) — leaving just the
+   canvas, the facecam bubble (z 600) and the auto-hiding scene counter. Foreign
+   cursors are hidden via the Collaborator* component overrides in TldrawCanvas,
+   not here (CSS over tldraw internals is brittle). */
+body.studio-mode header,
+body.studio-mode .sidebar,
+body.studio-mode .tool-rail,
+body.studio-mode .zoom-controls,
+body.studio-mode .ai-toolbar,
+body.studio-mode .animation-trigger,
+body.studio-mode .tlui-layout {
+  display: none !important;
 }
 
 /* ─── Vox-Style Canvas Background Textures ──────────── */

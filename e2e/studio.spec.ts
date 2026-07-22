@@ -4,8 +4,11 @@ import { test, expect } from "@playwright/test";
 // Studio mode hides all chrome and drives the camera with the keyboard.
 test("scenes drive the camera and Studio mode hides all chrome", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("plan-user-name", "Tester"));
-  await page.goto("/");
-  await page.waitForURL(/\/board\/.+/, { timeout: 20_000 });
+  // Fresh, empty board so scene frames don't accumulate across runs (sync persists).
+  const board = await (
+    await page.request.post("/api/boards", { data: { name: `Studio ${Date.now()}` } })
+  ).json();
+  await page.goto(`/board/${board.id}`);
   await page.waitForFunction(() => !!(window as any).__tldrawEditor, null, { timeout: 20_000 });
 
   // Two numbered frames (a scene) + one plain frame (not a scene), created apart
@@ -19,7 +22,9 @@ test("scenes drive the camera and Studio mode hides all chrome", async ({ page }
     mk("Moodboard", -1400, 800);
   });
 
-  // Scene panel lists exactly the two numbered frames, in order.
+  // The panel is tucked behind an edge handle; hovering it reveals the list,
+  // which shows exactly the two numbered frames.
+  await page.locator('[aria-label="Scenes"]').hover();
   await expect(page.getByTitle("1 Intro")).toBeVisible();
   await expect(page.getByTitle("2 Hook")).toBeVisible();
   await expect(page.getByTitle("Moodboard")).toHaveCount(0);

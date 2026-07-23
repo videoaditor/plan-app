@@ -2,10 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { Editor } from "tldraw";
-import { Clapperboard, Video } from "lucide-react";
 import { getScenes, zoomToScene } from "@/lib/scenes.mjs";
 import ScenePanel from "./ScenePanel";
-import FacecamBubble from "./FacecamBubble";
 
 export interface Scene {
   id: string;
@@ -14,10 +12,12 @@ export interface Scene {
 }
 
 // Studio mode: a distraction-free stage for recording over a board with an
-// external screen recorder. Replaces the old marker-hunting Present mode. Owns
-// the scene list, camera navigation, the entry pills + scene panel, and the
-// facecam bubble. Chrome-hiding is CSS (body.studio-mode); foreign cursors are
-// hidden via the reactive Collaborator* overrides in TldrawCanvas.
+// external screen recorder (Screen Studio, Tella, QuickTime). Replaces the old
+// marker-hunting Present mode. Owns the scene list, camera navigation, and the
+// entry affordance. Recording — and the facecam — live in the external recorder,
+// so this only provides the clean stage. Chrome-hiding is CSS (body.studio-mode);
+// foreign cursors are hidden via the reactive Collaborator* overrides in
+// TldrawCanvas.
 export default function StudioMode({
   editor,
   studio,
@@ -29,8 +29,6 @@ export default function StudioMode({
 }) {
   const [scenes, setScenes] = useState<Scene[]>(() => getScenes(editor));
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [facecam, setFacecam] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const [counterOn, setCounterOn] = useState(false);
   const counterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -119,10 +117,6 @@ export default function StudioMode({
         e.preventDefault();
         e.stopPropagation();
         editor.setCurrentTool("laser");
-      } else if (k === "c") {
-        e.preventDefault();
-        e.stopPropagation();
-        setFacecam((v) => !v);
       } else if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
@@ -150,25 +144,10 @@ export default function StudioMode({
 
   return (
     <>
-      {/* Entry pills + scene panel (only outside studio) */}
+      {/* Scenes + Studio entry live behind the right-edge handle (only outside
+          studio) so nothing floats over the canvas while working. */}
       {!studio && (
-        <>
-          <div style={{ position: "absolute", bottom: 24, left: 24, zIndex: 400, display: "flex", gap: 8 }}>
-            <button onClick={enter} title="Studio mode (S)" style={pillStyle(false)}>
-              <Clapperboard size={16} strokeWidth={2} />
-              Studio
-            </button>
-            <button
-              onClick={() => setFacecam((v) => !v)}
-              title="Toggle facecam (C)"
-              style={pillStyle(facecam)}
-            >
-              <Video size={16} strokeWidth={2} />
-              Facecam
-            </button>
-          </div>
-          <ScenePanel scenes={scenes} activeId={activeId} onGoTo={goTo} />
-        </>
+        <ScenePanel scenes={scenes} activeId={activeId} onGoTo={goTo} onEnterStudio={enter} />
       )}
 
       {/* Scene counter — subtle, bottom center, auto-hides */}
@@ -198,55 +177,6 @@ export default function StudioMode({
           {counterLabel}
         </div>
       )}
-
-      {facecam && <FacecamBubble onError={(msg) => { setToast(msg); setFacecam(false); }} />}
-
-      {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </>
   );
-}
-
-function Toast({ message, onDone }: { message: string; onDone: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 3500);
-    return () => clearTimeout(t);
-  }, [onDone]);
-  return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: 80,
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 700,
-        padding: "10px 16px",
-        fontSize: 13,
-        fontWeight: 600,
-        color: "var(--text-primary)",
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: 100,
-        boxShadow: "var(--shadow-float)",
-      }}
-    >
-      {message}
-    </div>
-  );
-}
-
-function pillStyle(active: boolean): React.CSSProperties {
-  return {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    padding: "10px 16px",
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
-    borderRadius: 100,
-    color: active ? "var(--accent-blue)" : "var(--text-primary)",
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: "pointer",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-  };
 }

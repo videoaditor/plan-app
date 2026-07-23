@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Film } from "lucide-react";
+import { Film, Clapperboard } from "lucide-react";
 
 interface Scene {
   id: string;
@@ -9,16 +9,19 @@ interface Scene {
   name: string;
 }
 
-// Scene list, tucked against the right edge. Hidden behind a slim handle so it
-// doesn't clutter the canvas — hovering the handle (or the list) reveals it.
+// Scene list + Studio entry, tucked against the right edge. Hidden behind a slim
+// handle so nothing clutters the canvas — hovering the handle (or the list)
+// reveals it. Studio can also be entered with the S key.
 export default function ScenePanel({
   scenes,
   activeId,
   onGoTo,
+  onEnterStudio,
 }: {
   scenes: Scene[];
   activeId: string | null;
   onGoTo: (id: string) => void;
+  onEnterStudio: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -132,6 +135,32 @@ export default function ScenePanel({
               </button>
             ))
           )}
+
+          <div style={{ height: 1, background: "var(--border)", margin: "6px 4px" }} />
+          <button
+            onClick={onEnterStudio}
+            title="Studio mode (S)"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              width: "100%",
+              padding: "8px 8px",
+              background: "transparent",
+              border: "1px solid transparent",
+              borderRadius: 9,
+              cursor: "pointer",
+              color: "var(--text-primary)",
+              fontSize: 13,
+              fontWeight: 600,
+              transition: "background 100ms ease",
+            }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "var(--surface-hover)")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "transparent")}
+          >
+            <Clapperboard size={15} strokeWidth={1.9} />
+            Studio mode
+          </button>
         </div>
       )}
 

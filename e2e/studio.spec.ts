@@ -38,9 +38,8 @@ test("scenes drive the camera and Studio mode hides all chrome", async ({ page }
   const cam1 = await page.evaluate(() => (window as any).__tldrawEditor.getCamera());
   expect(cam1.x !== cam0.x || cam1.y !== cam0.y || cam1.z !== cam0.z).toBeTruthy();
 
-  // Enter Studio mode (S) → all chrome gone.
-  await page.locator("body").click({ position: { x: 500, y: 400 } });
-  await page.keyboard.press("s");
+  // Enter Studio via the panel button → all chrome gone.
+  await page.getByRole("button", { name: "Studio mode" }).click();
   await expect(page.locator(".tool-rail")).toBeHidden();
   await expect(page.locator(".zoom-controls")).toBeHidden();
   await expect(page.locator("header")).toBeHidden();

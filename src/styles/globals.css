@@ -808,7 +808,7 @@ html.theme-transitioning *::after {
 /* ─── Studio Mode ─────────────────────────────────────
    A distraction-free stage for recording. Hide ALL chrome — our own rails and
    the app frame plus tldraw's whole UI layer (.tlui-layout) — leaving just the
-   canvas, the facecam bubble (z 600) and the auto-hiding scene counter. Foreign
+   canvas and the auto-hiding scene counter. Foreign
    cursors are hidden via the Collaborator* component overrides in TldrawCanvas,
    not here (CSS over tldraw internals is brittle). */
 body.studio-mode header,

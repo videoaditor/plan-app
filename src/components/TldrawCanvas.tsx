@@ -377,7 +377,7 @@ function CanvasUI({
       )}
       <ProcessingOverlay editor={editor} />
       {/* ShapeAnimations removed — CSS transform conflicts with tldraw */}
-      {/* Studio mode (scenes/facecam) is mounted outside <Tldraw> — see below */}
+      {/* Studio mode (scenes) is mounted outside <Tldraw> — see below */}
     </>
   );
 }
@@ -698,7 +698,7 @@ export default function TldrawCanvas({ boardId }: TldrawCanvasProps) {
           <ZoomControls editor={editor} />
         </div>
 
-        {/* Studio mode: scenes, camera navigation, facecam bubble */}
+        {/* Studio mode: scenes, camera navigation, recording stage */}
         {editor && (
           <StudioMode editor={editor} studio={studioMode} setStudio={setStudioMode} />
         )}

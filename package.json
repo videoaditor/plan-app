@@ -12,6 +12,7 @@
     "smoke:migration": "node scripts/smoke-migration.mjs",
     "sync": "node sync-server/index.mjs",
     "smoke:sync": "node scripts/smoke-sync.mjs",
+    "smoke:scenes": "node scripts/smoke-scenes.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {
